@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет - Автобаттл MMO</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="header-wrapper">
+            <a href="https://mobitva.net" target="_blank">mobitva.net</a>
+            <div class="site-title">👤 ЛИЧНЫЙ КАБИНЕТ 👤</div>
+            <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
+        </div>
+        <div class="categories">
+            <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
+            <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
+        </div>
+        <div class="profile-container" id="profile-container"></div>
+    </div>
+
+    <!-- Модалка добавления персонажа -->
+    <div id="addCharModal" class="modal" style="display:none;">
+        <div class="add-char-modal">
+            <h2>➕ НОВЫЙ ПЕРСОНАЖ</h2>
+            <input type="text" id="charName" placeholder="Введите имя персонажа">
+            <div class="modal-buttons">
+                <button class="modal-save-btn" onclick="addCharacterHandler()">💾 СОХРАНИТЬ</button>
+                <button class="modal-cancel-btn" onclick="closeAddCharModal()">❌ ОТМЕНА</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка таймера -->
+    <div id="timerModal" class="modal" style="display:none;">
+        <div class="timer-modal-content">
+            <h2 id="timerModalTitle">⏱️ НАСТРОЙКА ТАЙМЕРА</h2>
+            <input type="hidden" id="currentCharacterId">
+            <input type="hidden" id="currentTimerId">
+
+            <div class="form-group">
+                <label>📝 НАЗВАНИЕ КВЕСТА / ЗАДАНИЯ</label>
+                <input type="text" id="questName" placeholder="Пример: Зачистка подземелья">
+            </div>
+
+            <div class="form-group">
+                <label>⏰ ВРЕМЯ ДО ЗАВЕРШЕНИЯ</label>
+                <div class="time-input-group">
+                    <div class="time-field">
+                        <label>ДНИ</label>
+                        <input type="number" id="timerDays" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="time-field">
+                        <label>ЧАСЫ</label>
+                        <input type="number" id="timerHours" min="0" max="23" value="0" placeholder="0">
+                    </div>
+                    <div class="time-field">
+                        <label>МИНУТЫ</label>
+                        <input type="number" id="timerMinutes" min="0" max="59" value="0" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-save-btn" onclick="saveTimerHandler()">💾 СОХРАНИТЬ</button>
+                <button class="modal-cancel-btn" onclick="closeTimerModal()">❌ ОТМЕНА</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        const currentUser = checkAuth();
+        if (!currentUser) { window.location.href = 'auth.html'; }
+
+        let characters = [];
+        let timerIntervals = {};
+
+        async function loadCharacters() {
+            const data = await getUserCharacters(currentUser.login);
+            characters = data;
+            renderProfile();
+        }
+
+        function formatTime(ms) {
+            if (ms <= 0) return '0с';
+            const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((ms % (86400000)) / 3600000);
+            const minutes = Math.floor((ms % 3600000) / 60000);
+            const seconds = Math.floor((ms % 60000) / 1000);
+            const parts = [];
+            if (days > 0) parts.push(`${days}д`);
+            if (hours > 0 || days > 0) parts.push(`${hours}ч`);
+            if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}м`);
+            parts.push(`${seconds}с`);
+            return parts.join(' ');
+        }
+
+        function calculateProgress(endTime, duration) {
+            if (duration <= 0) return 0;
+            const total = duration;
+            const elapsed = duration - (endTime - Date.now());
+            let percent = (elapsed / total) * 100;
+            if (percent < 0) percent = 0;
+            if (percent > 100) percent = 100;
+            return percent;
+        }
+
+        async function renderProfile() {
+            const container = document.getElementById('profile-container');
+            if (!container) return;
+
+            let html = '';
+            for (const char of characters) {
+                const timers = await getCharacterTimers(char.id);
+                let timersHtml = '';
+                for (const timer of timers) {
+                    const remaining = timer.end_time - Date.now();
+                    const isActive = timer.is_active && remaining > 0;
+                    let timeStr = formatTime(remaining);
+                    const progressPercent = calculateProgress(timer.end_time, timer.duration);
+
+                    if (remaining <= 0 && timer.is_active) {
+                        await db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
+                        timer.is_active = false;
+                    }
+
+                    timersHtml += `
+                <div class="timer-item" data-timer-id="${timer.id}">
+                    <div class="timer-info">
+                        <div class="timer-name-row">
+                            <span class="timer-name">${escapeHtml(timer.quest_name)}</span>
+                            <span class="timer-status ${isActive ? 'active' : 'inactive'}">${isActive ? 'АКТИВЕН' : 'ЗАВЕРШЁН'}</span>
+                        </div>
+                        <div class="timer-time-row">
+                            <span class="timer-time">${timeStr}</span>
+                        </div>
+                        <div class="timer-progress">
+                            <div class="timer-progress-bar" style="width:${progressPercent}%;"></div>
+                        </div>
+                    </div>
+                    <div class="timer-actions">
+                        <button class="timer-btn" onclick="event.stopPropagation(); editTimerHandler(${char.id}, ${timer.id})">✏️ РЕДАКТИРОВАТЬ</button>
+                        <button class="timer-btn" onclick="event.stopPropagation(); deleteTimerHandler(${char.id}, ${timer.id})">🗑️ УДАЛИТЬ</button>
+                        ${!isActive && remaining <= 0 ? `<button class="timer-btn" onclick="event.stopPropagation(); restartTimerHandler(${char.id}, ${timer.id})">🔄 РЕСТАРТ</button>` : ''}
+                    </div>
+                </div>
+            `;
+                }
+
+                html += `
+            <div class="character-card">
+                <div class="character-header">
+                    <button class="refresh-all-btn" onclick="refreshAllTimers(${char.id})">🔄 Обновить все</button>
+                    <div class="character-name">${escapeHtml(char.name)}</div>
+                    <button class="delete-char-btn" onclick="deleteCharacterHandler(${char.id})">🗑️ УДАЛИТЬ</button>
+                </div>
+                <div class="timer-list">
+                    ${timersHtml || '<div style="text-align:center;padding:20px;color:#a0a0a0;">📭 Нет активных таймеров</div>'}
+                </div>
+                <button class="add-timer-btn" onclick="openTimerModal(${char.id})">➕ ДОБАВИТЬ ТАЙМЕР</button>
+            </div>
+        `;
+            }
+
+            // Кнопка добавления персонажа внизу
+            html += `<button class="add-character-btn" onclick="openAddCharModal()">➕ ДОБАВИТЬ ПЕРСОНАЖА</button>`;
+
+            container.innerHTML = html;
+            afterTimersRendered(); // ВАЖНО: вызываем после рендера!
+            startTimerUpdates();
+        }
+
+        function startTimerUpdates() {
+            if (timerIntervals['global']) clearInterval(timerIntervals['global']);
+            timerIntervals['global'] = setInterval(async () => {
+                const container = document.getElementById('profile-container');
+                if (!container) return;
+                for (const char of characters) {
+                    const timers = await getCharacterTimers(char.id);
+                    for (const timer of timers) {
+                        const timerElement = container.querySelector(`.timer-item[data-timer-id="${timer.id}"]`);
+                        if (timerElement && timer.is_active) {
+                            const remaining = timer.end_time - Date.now();
+                            const timeStr = formatTime(remaining);
+                            const timeSpan = timerElement.querySelector('.timer-time');
+                            if (timeSpan) timeSpan.textContent = timeStr;
+
+                            const progressPercent = calculateProgress(timer.end_time, timer.duration);
+                            const progressBar = timerElement.querySelector('.timer-progress-bar');
+                            if (progressBar) progressBar.style.width = `${progressPercent}%`;
+
+                            if (remaining <= 0) {
+                                await db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
+                                const statusSpan = timerElement.querySelector('.timer-status');
+                                if (statusSpan) {
+                                    statusSpan.textContent = 'ЗАВЕРШЁН';
+                                    statusSpan.classList.remove('active');
+                                    statusSpan.classList.add('inactive');
+                                }
+                            }
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
+        function openAddCharModal() { document.getElementById('addCharModal').style.display = 'flex'; }
+        function closeAddCharModal() { document.getElementById('addCharModal').style.display = 'none'; document.getElementById('charName').value = ''; }
+
+        async function addCharacterHandler() {
+            const name = document.getElementById('charName').value.trim();
+            if (!name) { alert('Введите имя персонажа!'); return; }
+            await addCharacter(currentUser.login, name);
+            closeAddCharModal();
+            await loadCharacters();
+        }
+
+        async function deleteCharacterHandler(id) {
+            if (confirm('Удалить персонажа и все его таймеры?')) {
+                await deleteCharacter(id);
+                await loadCharacters();
+            }
+        }
+
+        function openTimerModal(characterId, timerId = null, questName = '', days = 0, hours = 0, minutes = 0) {
+            document.getElementById('currentCharacterId').value = characterId;
+            document.getElementById('currentTimerId').value = timerId || '';
+            document.getElementById('questName').value = questName;
+            document.getElementById('timerDays').value = days;
+            document.getElementById('timerHours').value = hours;
+            document.getElementById('timerMinutes').value = minutes;
+            document.getElementById('timerModalTitle').innerText = timerId ? '✏️ РЕДАКТИРОВАНИЕ ТАЙМЕРА' : '➕ НОВЫЙ ТАЙМЕР';
+            document.getElementById('timerModal').style.display = 'flex';
+        }
+        function closeTimerModal() { document.getElementById('timerModal').style.display = 'none'; }
+
+        async function saveTimerHandler() {
+            const characterId = parseInt(document.getElementById('currentCharacterId').value);
+            const timerId = document.getElementById('currentTimerId').value;
+            const questName = document.getElementById('questName').value.trim();
+            const days = parseInt(document.getElementById('timerDays').value) || 0;
+            const hours = parseInt(document.getElementById('timerHours').value) || 0;
+            const minutes = parseInt(document.getElementById('timerMinutes').value) || 0;
+            if (!questName) { alert('Введите название квеста!'); return; }
+            const totalMs = (days * 24 * 60 * 60 * 1000) + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000);
+            if (totalMs <= 0) { alert('Укажите время больше 0!'); return; }
+            const endTime = Date.now() + totalMs;
+            if (timerId) {
+                await updateTimer(parseInt(timerId), questName, endTime, totalMs);
+            } else {
+                await addTimer(characterId, questName, endTime, totalMs);
+            }
+            closeTimerModal();
+            await loadCharacters();
+        }
+
+        async function editTimerHandler(characterId, timerId) {
+            const timers = await getCharacterTimers(characterId);
+            const timer = timers.find(t => t.id === timerId);
+            if (timer) {
+                const remaining = timer.end_time - Date.now();
+                const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remaining % (86400000)) / 3600000);
+                const minutes = Math.floor((remaining % 3600000) / 60000);
+                openTimerModal(characterId, timerId, timer.quest_name, days, hours, minutes);
+            }
+        }
+
+        async function deleteTimerHandler(characterId, timerId) {
+            if (confirm('Удалить таймер?')) {
+                await deleteTimer(timerId);
+                await loadCharacters();
+            }
+        }
+
+        async function restartTimerHandler(characterId, timerId) {
+            const timers = await getCharacterTimers(characterId);
+            const timer = timers.find(t => t.id === timerId);
+            if (timer) {
+                const endTime = Date.now() + timer.duration;
+                await updateTimer(timerId, timer.quest_name, endTime, timer.duration);
+                await db.from('user_timers').update({ is_active: true }).eq('id', timerId);
+                await loadCharacters();
+            }
+        }
+
+        // ========== ЕБАНЫЕ КЛИКАБЕЛЬНЫЕ ТАЙМЕРЫ ==========
+        function initTimerClickHandler() {
+            document.querySelectorAll('.timer-item').forEach(timer => {
+                timer.removeEventListener('click', timerClickHandler);
+                timer.addEventListener('click', timerClickHandler);
+            });
+        }
+
+        function timerClickHandler(e) {
+            if (e.target.classList.contains('timer-btn')) {
+                e.stopPropagation();
+                return;
+            }
+            this.classList.toggle('expanded');
+        }
+
+        function afterTimersRendered() {
+            initTimerClickHandler();
+        }
+        // ========== ОБНОВИТЬ ВСЕ ТАЙМЕРЫ ПЕРСОНАЖА ==========
+        async function refreshAllTimers(characterId) {
+            if(!confirm('🔄 Перезапустить ВСЕ квесты этого персонажа? Все активные таймеры начнутся заново с тем же временем!')) return;
+            
+            const timers = await getCharacterTimers(characterId);
+            if(timers.length === 0) {
+                alert('❌ Нет активных таймеров для перезапуска!');
+                return;
+            }
+            
+            let refreshed = 0;
+            for(const timer of timers) {
+                if(timer.duration > 0) {
+                    const endTime = Date.now() + timer.duration;
+                    await updateTimer(timer.id, timer.quest_name, endTime, timer.duration);
+                    await db.from('user_timers').update({ is_active: true }).eq('id', timer.id);
+                    refreshed++;
+                }
+            }
+            
+            alert(`✅ Перезапущено ${refreshed} квестов!`);
+            await loadCharacters(); // Перезагружаем список
+        }
+        loadCharacters();
+    </script>
+</body>
+
+</html>

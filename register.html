@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Регистрация - Автобаттл MMO</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="wrapper">
+    <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a><div class="site-title">⚔️ РЕГИСТРАЦИЯ ⚔️</div><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a></div>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-icon">📝</div>
+            <div class="auth-title">Создание аккаунта</div>
+            <div class="auth-subtitle">Заполните поля для регистрации</div>
+            <div class="auth-input-group"><label>👤 Логин</label><input type="text" id="regLogin" placeholder="Логин"></div>
+            <div class="auth-input-group"><label>📧 Email</label><input type="email" id="regEmail" placeholder="Email"></div>
+            <div class="auth-input-group"><label>🔒 Пароль</label><input type="password" id="regPassword" placeholder="Пароль"></div>
+            <div class="auth-input-group"><label>🔒 Подтверждение</label><input type="password" id="regConfirmPassword" placeholder="Повторите пароль"></div>
+            <button class="auth-btn" id="registerBtn">Зарегистрироваться</button>
+            <div class="auth-error" id="errorMsg"></div>
+            <div class="auth-success" id="successMsg"></div>
+            <div class="auth-links">Уже есть аккаунт? <a href="auth.html">Войти</a></div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script src="js/common.js"></script>
+<script>
+document.getElementById('registerBtn').onclick = async function() {
+    const login = document.getElementById('regLogin').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirmPassword').value;
+    const errorMsg = document.getElementById('errorMsg');
+    const successMsg = document.getElementById('successMsg');
+    
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+    
+    if(!login || !email || !password || !confirm) {
+        errorMsg.textContent = '❌ Заполните все поля!';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    if(password !== confirm) {
+        errorMsg.textContent = '❌ Пароли не совпадают!';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const isFirst = await isFirstUser();
+        const result = await registerUser(login, password, email);
+        
+        if(result.success) {
+            if(isFirst) {
+                await db.from('users').update({ role: 'admin' }).eq('id', result.userId);
+            }
+            successMsg.textContent = result.message;
+            successMsg.style.display = 'block';
+            setTimeout(() => { window.location.href = 'auth.html'; }, 2000);
+        } else {
+            errorMsg.textContent = result.message;
+            errorMsg.style.display = 'block';
+        }
+    } catch(e) {
+        console.error(e);
+        errorMsg.textContent = '❌ Ошибка сервера. Попробуйте позже.';
+        errorMsg.style.display = 'block';
+    }
+};
+
+if(localStorage.getItem('user')) { window.location.href = 'main.html'; }
+</script>
+</body>
+</html>

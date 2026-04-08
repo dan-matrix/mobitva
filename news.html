@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Новости - Автобаттл MMO</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="wrapper">
+    <div id="adminPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👑</div><div><div class="admin-name" id="adminName"></div><div class="admin-role">Администратор</div></div><div class="admin-badge">ADMIN</div></div><div class="admin-actions"><button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
+    <div id="userPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👤</div><div><div class="admin-name" id="userName"></div><div class="admin-role">Пользователь</div></div></div><div class="admin-actions"><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
+    <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a><div class="site-title">📰 НОВОСТИ 📰</div><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a></div>
+    <div class="categories"><button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button><button class="cat-btn" onclick="location.reload()">🔄 Обновить</button></div>
+    <div class="news-container" id="newsContainer"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script src="js/common.js"></script>
+<script>
+if(!checkAuth()) { window.location.href = 'auth.html'; }
+async function renderNews() {
+    const news = await getNews();
+    const container = document.getElementById('newsContainer');
+    if(!container) return;
+    let html = '';
+    for(const n of news) {
+        html += `<div class="news-card">
+                    <div class="news-card-header"><div class="news-date-large">📅 ${new Date(n.date).toLocaleDateString('ru-RU')}</div></div>
+                    <div class="news-card-body">
+                        <div class="news-title">${escapeHtml(n.title)}</div>
+                        <div class="news-content">${escapeHtml(n.content)}</div>
+                        ${n.footer ? `<div class="news-footer">${escapeHtml(n.footer)}</div>` : ''}
+                    </div>
+                </div>`;
+    }
+    container.innerHTML = html;
+}
+renderNews(); document.addEventListener('DOMContentLoaded', displayAdminPanel);
+</script>
+</body>
+</html>
