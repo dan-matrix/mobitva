@@ -340,7 +340,7 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 @keyframes modalFadeIn{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px #2c7a2c;}50%{opacity:0.85;box-shadow:0 0 20px #2c7a2c;}}
 
-/* ===== АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ ===== */
+/* ===== АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ (ИКОНКИ ОСТАЮТСЯ 80x80) ===== */
 @media (max-width: 768px){
 body{padding:10px;}
 .wrapper{padding:12px;}
@@ -357,7 +357,7 @@ body{padding:10px;}
 .cat-btn{padding:6px 12px;font-size:11px;}
 .items-table tbody{grid-template-columns:repeat(2,1fr);gap:8px;}
 .items-table tr{padding:6px;}
-.item-cell .shop-icon{width:60px;height:60px;}
+.item-cell .shop-icon{width:80px!important;height:80px!important;}
 .item-cell span{font-size:10px;}
 .style-cell{font-size:10px;padding:3px 10px;min-width:auto;}
 .item-type{font-size:9px;}
@@ -375,13 +375,13 @@ body{padding:10px;}
 .item-card-stat-line{font-size:10px;}
 .compare-btn,.close-modal-btn{padding:6px 16px;font-size:11px;}
 .select-item-content{width:95%;}
-.select-item-option .shop-icon{width:80px!important;height:80px!important;}
+.select-item-option .shop-icon{width:50px!important;height:50px!important;}
 .select-item-name{font-size:12px;}
 .select-item-type{font-size:10px;}
 .circles-grid,.runes-grid,.totems-grid{grid-template-columns:repeat(2,1fr);gap:12px;}
 .circle-card,.rune-card,.totem-card{padding:10px;}
 .circle-name,.rune-name,.totem-name{font-size:14px;}
-.circle-icon,.rune-icon,.totem-icon{width:80px;height:80px;}
+.circle-icon,.rune-icon,.totem-icon{width:80px!important;height:80px!important;}
 .admin-table{display:block;overflow-x:auto;}
 .admin-table th,.admin-table td{padding:6px;font-size:11px;}
 .admin-tabs{justify-content:center;}
