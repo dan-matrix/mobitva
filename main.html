@@ -172,7 +172,7 @@
             if (!container) return;
 
             if (filtered.length === 0) {
-                container.innerHTML = `<tr><td colspan="4"><div class="no-items">🔍 Ничего не найдено...</div></td></tr>`;
+                container.innerHTML = `<tr><td colspan="4"><div class="no-items">🔍 Ничего не найдено...</div></td></td>`;
                 return;
             }
 
@@ -221,6 +221,7 @@
 
             const styleText = getRussianStyleText(item.style);
             const styleName = item.style === 'rare' ? 'Урон' : item.style === 'uncommon' ? 'Уворот' : item.style === 'armor' ? 'Броня' : item.style === 'epic' ? 'Элита' : '—';
+            const styleClass = item.style || '';
 
             return `
         <div class="item-card-modal ${isCompare ? 'compared' : ''}" data-item-id="${item.id}">
@@ -230,7 +231,7 @@
                     <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col};"></div>
                 </div>
                 <div class="item-card-title">${escapeHtml(item.name)}</div>
-                <div class="item-card-subtitle">${item.type} | ${styleName}</div>
+                <div class="item-card-subtitle"><span class="style-cell ${styleClass}" style="display:inline-block; margin:0 auto; font-size:12px; padding:4px 12px;">${styleName}</span> | ${item.type}</div>
                 <div class="item-card-level">⭐ Уровень ${item.level}</div>
             </div>
             <div class="item-card-body">

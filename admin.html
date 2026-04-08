@@ -171,6 +171,64 @@
             color: #0d0a07;
         }
 
+        .add-stat-btn {
+            background: #2a2420;
+            border: 2px solid #c7ba00;
+            border-radius: 30px;
+            padding: 8px 16px;
+            color: #c7ba00;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .add-stat-btn:hover {
+            background: #c7ba00;
+            color: #0d0a07;
+            transform: scale(1.02);
+        }
+
+        .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    }
+
+    .search-bar input {
+        background: #0d0a07;
+        color: #e8dcc0;
+        border: 1px solid #c7ba00;
+        border-radius: 8px;
+        padding: 8px 12px;
+        flex: 1;
+        min-width: 200px;
+        height: 38px;
+        font-size: 13px;
+    }
+
+    .search-bar input:focus {
+        outline: none;
+        border-color: #ffaa44;
+    }
+
+    .search-bar .add-btn {
+        margin-bottom: 0;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .search-bar .cat-btn {
+        height: 38px;
+        padding: 0 16px;
+        display: inline-flex;
+        align-items: center;
+    }
+
         /* Модальные окна */
         .modal {
             display: none;
@@ -413,14 +471,18 @@
             <div class="admin-tab" data-tab="demons">👹 Круги демона</div>
             <div class="admin-tab" data-tab="totems">🧪 Тотемы</div>
             <div class="admin-tab" data-tab="master">🏰 Мастер рун</div>
-            <div class="admin-tab" data-tab="druids">🌿 Холм Фиглей</div>
+            <div class="admin-tab" data-tab="druids">🌿 Холм Друидов</div>
             <div class="admin-tab" data-tab="nakolki">🏚️ Квестовые руны</div>
             <div class="admin-tab" data-tab="news">📰 Новости</div>
             <div class="admin-tab" data-tab="users">👥 Пользователи</div>
         </div>
 
         <div id="itemsPanel" class="admin-panel-content active">
-            <button class="add-btn" onclick="openModal('items')">➕ Добавить предмет</button>
+            <div class="search-bar">
+                <button class="add-btn" onclick="openModal('items')">➕ Добавить предмет</button>
+                <input type="text" id="searchItems" placeholder="🔍 Поиск по названию...">
+                <button class="cat-btn" onclick="clearSearch()">🔄 Сброс</button>
+            </div>
             <table class="admin-table" id="itemsTable">
                 <thead>
                     <tr>
@@ -559,6 +621,7 @@
         const user = checkAuth(); if (!user || user.role !== 'admin') { alert('Доступ запрещён!'); window.location.href = 'index.html'; }
 
         let currentType = null, currentId = null, currentPickerCallback = null;
+        let allItemsData = [];
 
         document.querySelectorAll('.admin-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -571,7 +634,14 @@
         });
 
         async function loadTable(type) {
-            if (type === 'items') renderItems(await getItems());
+            if (type === 'items') {
+                await loadItemsWithSearch();
+                const searchInput = document.getElementById('searchItems');
+                if (searchInput && !searchInput.hasListener) {
+                    searchInput.addEventListener('input', () => renderItemsWithSearch());
+                    searchInput.hasListener = true;
+                }
+            }
             if (type === 'demons') renderDemons(await getDemons());
             if (type === 'totems') renderTotems(await getTotems());
             if (type === 'master') renderMaster(await getMasterRunes());
@@ -581,17 +651,133 @@
             if (type === 'users') renderUsers(await getUsers());
         }
 
-        function renderItems(data) { const tbody = document.getElementById('itemsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${escapeHtml(d.type)}</td><td>${d.level}</td><td>${getRussianStyleText(d.style)}</td><td><button class="edit-btn" onclick="openModal('items',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('items',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderDemons(data) { const tbody = document.getElementById('demonsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${d.level}</td><td><button class="edit-btn" onclick="openModal('demons',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('demons',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderTotems(data) { const tbody = document.getElementById('totemsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${d.level}</td><td>${d.required_level}</td><td><button class="edit-btn" onclick="openModal('totems',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('totems',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderMaster(data) { const tbody = document.getElementById('masterList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${d.level}</td><td><button class="edit-btn" onclick="openModal('master',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('master',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderDruids(data) { const tbody = document.getElementById('druidsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${d.level}</td><td><button class="edit-btn" onclick="openModal('druids',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('druids',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderNakolki(data) { const tbody = document.getElementById('nakolkiList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.name)}</td><td>${d.level}</td><td><button class="edit-btn" onclick="openModal('nakolki',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('nakolki',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderNews(data) { const tbody = document.getElementById('newsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.title)}</td><td>${d.date}</td><td><button class="edit-btn" onclick="openModal('news',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('news',${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
-        function renderUsers(data) { const tbody = document.getElementById('usersList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr><td>${d.id}</td><td>${escapeHtml(d.login)}</td><td>${escapeHtml(d.email || '-')}</td><td>${d.role}</td><td><button class="delete-btn" onclick="deleteUser(${d.id})">🗑️</button></td></tr>`; tbody.innerHTML = html; }
+        // ========== ПОИСК В АДМИНКЕ ==========
+        async function loadItemsWithSearch() {
+            allItemsData = await getItems();
+            renderItemsWithSearch();
+        }
+
+        function renderItemsWithSearch() {
+            const tbody = document.getElementById('itemsList');
+            if (!tbody) return;
+            
+            const searchTerm = document.getElementById('searchItems') ? document.getElementById('searchItems').value.toLowerCase().trim() : '';
+            
+            let filtered = [...allItemsData];
+            if (searchTerm !== '') {
+                filtered = filtered.filter(item => item.name.toLowerCase().includes(searchTerm));
+            }
+            
+            let html = '';
+            for (const d of filtered) {
+                html += `<tr>
+                    <td>${d.id}</td>
+                    <td>${escapeHtml(d.name)}</td>
+                    <td>${escapeHtml(d.type)}</td>
+                    <td>${d.level}</td>
+                    <td>${getRussianStyleText(d.style)}</td>
+                    <td><button class="edit-btn" onclick="openModal('items',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('items',${d.id})">🗑️</button></td>
+                </tr>`;
+            }
+            tbody.innerHTML = html;
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('searchItems');
+            if (searchInput) {
+                searchInput.value = '';
+                renderItemsWithSearch();
+            }
+        }
+
+        function renderItems(data) { 
+            const tbody = document.getElementById('itemsList'); 
+            if (!tbody) return; 
+            let html = ''; 
+            for (const d of data) html += `<tr>
+                <td>${d.id}</td>
+                <td>${escapeHtml(d.name)}</td>
+                <td>${escapeHtml(d.type)}</td>
+                <td>${d.level}</td>
+                <td>${getRussianStyleText(d.style)}</td>
+                <td><button class="edit-btn" onclick="openModal('items',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('items',${d.id})">🗑️</button></td>
+            </tr>`; 
+            tbody.innerHTML = html; 
+        }
+        
+        function renderDemons(data) { const tbody = document.getElementById('demonsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${d.level}</td>
+            <td><button class="edit-btn" onclick="openModal('demons',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('demons',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderTotems(data) { const tbody = document.getElementById('totemsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${d.level}</td>
+            <td>${d.required_level}</td>
+            <td><button class="edit-btn" onclick="openModal('totems',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('totems',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderMaster(data) { const tbody = document.getElementById('masterList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${d.level}</td>
+            <td><button class="edit-btn" onclick="openModal('master',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('master',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderDruids(data) { const tbody = document.getElementById('druidsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${d.level}</td>
+            <td><button class="edit-btn" onclick="openModal('druids',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('druids',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderNakolki(data) { const tbody = document.getElementById('nakolkiList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${d.level}</td>
+            <td><button class="edit-btn" onclick="openModal('nakolki',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('nakolki',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderNews(data) { const tbody = document.getElementById('newsList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.title)}</td>
+            <td>${d.date}</td>
+            <td><button class="edit-btn" onclick="openModal('news',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('news',${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
+         
+        function renderUsers(data) { const tbody = document.getElementById('usersList'); if (!tbody) return; let html = ''; for (const d of data) html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.login)}</td>
+            <td>${escapeHtml(d.email || '-')}</td>
+            <td>${d.role}</td>
+            <td><button class="delete-btn" onclick="deleteUser(${d.id})">🗑️</button></td>
+        </tr>`; tbody.innerHTML = html; }
 
         async function deleteRow(type, id) { if (confirm('Удалить?')) { if (type === 'items') await deleteItemById(id); if (type === 'demons') await deleteDemonById(id); if (type === 'totems') await deleteTotemById(id); if (type === 'master') await deleteMasterRuneById(id); if (type === 'druids') await deleteDruidsRuneById(id); if (type === 'nakolki') await deleteNakolkiById(id); if (type === 'news') await deleteNewsById(id); loadTable(type); } }
         async function deleteUser(id) { if (confirm('Удалить пользователя?')) { await db.from('users').delete().eq('id', id); loadTable('users'); } }
+
+        // ========== ФУНКЦИЯ ПРОВЕРКИ ДУБЛИКАТОВ ==========
+        async function checkDuplicateItem(itemName, itemType, currentId = null) {
+            const allItems = await getItems();
+            const duplicate = allItems.find(item => 
+                item.name.toLowerCase() === itemName.toLowerCase() && 
+                item.type.toLowerCase() === itemType.toLowerCase() &&
+                (currentId === null || item.id !== currentId)
+            );
+            return duplicate !== undefined;
+        }
+
+        async function checkDuplicateGeneric(itemName, currentId = null, getFunction) {
+            const allItems = await getFunction();
+            const duplicate = allItems.find(item => 
+                item.name.toLowerCase() === itemName.toLowerCase() &&
+                (currentId === null || item.id !== currentId)
+            );
+            return duplicate !== undefined;
+        }
 
         function showIconPicker(callback, buttonElement) {
             currentPickerCallback = callback;
@@ -630,6 +816,7 @@
                 if (type === 'news') data = await getNewsById(id);
             }
             let html = '';
+            
             if (type === 'items') {
                 const typeOptions = ['Оружие', 'Броня', 'Зелье', 'Свиток', 'Амулет', 'Кольцо', 'Разное'];
                 let typeSelect = '<select id="itemType" class="form-control">';
@@ -645,8 +832,57 @@
                 <div class="form-row"><div class="form-group"><label>✨ Стиль</label>${styleSelect}</div></div>
                 <div class="form-group"><button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('iconRow').value=r; document.getElementById('iconCol').value=c; document.getElementById('iconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button><div id="iconPreview" class="icon-preview">${data ? `Текущая: ряд ${data.icon_row + 1}, колонка ${data.icon_col + 1}` : '❌ Не выбрано'}</div><input type="hidden" id="iconRow" value="${data ? data.icon_row : 19}"><input type="hidden" id="iconCol" value="${data ? data.icon_col : 4}"></div>
                 <div class="stats-grid" id="statsGrid"></div>
+                <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3" placeholder="Описание предмета...">${data ? escapeHtml(data.description || '') : ''}</textarea></div>
                 <div class="unique-container" id="uniqueContainer"></div>
                 <button type="button" class="add-stat-btn" onclick="addUniqueField()">➕ Добавить уникальную характеристику</button>`;
+                container.innerHTML = html;
+                
+                // ========== ПРОВЕРКА ДУБЛИКАТОВ ПРЕДМЕТОВ В РЕАЛЬНОМ ВРЕМЕНИ ==========
+                const nameInput = document.getElementById('itemName');
+                const typeSelectEl = document.getElementById('itemType');
+                const saveBtn = document.querySelector('.modal-buttons .cat-btn:first-child');
+                
+                async function checkItemDuplicate() {
+                    const currentName = nameInput ? nameInput.value.trim() : '';
+                    const currentType = typeSelectEl ? typeSelectEl.value : '';
+                    
+                    if(!currentName) {
+                        let existingWarning = document.getElementById('duplicateWarning');
+                        if(existingWarning) existingWarning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                        return;
+                    }
+                    
+                    const allItems = await getItems();
+                    const isDuplicate = allItems.find(item => 
+                        item.name.toLowerCase() === currentName.toLowerCase() && 
+                        item.type.toLowerCase() === currentType.toLowerCase() &&
+                        (currentId === null || item.id !== currentId)
+                    );
+                    
+                    let warning = document.getElementById('duplicateWarning');
+                    if(isDuplicate) {
+                        if(!warning) {
+                            const formRow = document.querySelector('#modalFields .form-row');
+                            const div = document.createElement('div');
+                            div.id = 'duplicateWarning';
+                            div.style.cssText = 'background:rgba(255,68,68,0.2);border:1px solid #ff4444;border-radius:8px;padding:8px;margin-top:10px;text-align:center;color:#ff8888;font-size:12px;';
+                            div.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! Предмет "${currentName}" (${currentType}) уже существует!`;
+                            if(formRow) formRow.after(div);
+                            else document.getElementById('modalFields').appendChild(div);
+                        } else {
+                            warning.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! Предмет "${currentName}" (${currentType}) уже существует!`;
+                            warning.style.display = 'block';
+                        }
+                        if(saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
+                    } else {
+                        if(warning) warning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                    }
+                }
+                
+                if(nameInput) nameInput.addEventListener('input', checkItemDuplicate);
+                if(typeSelectEl) typeSelectEl.addEventListener('change', checkItemDuplicate);
             }
             else if (type === 'demons' || type === 'totems' || type === 'master' || type === 'druids' || type === 'nakolki') {
                 let extraField = '';
@@ -655,39 +891,145 @@
                 <div class="form-row"><div class="form-group"><label>⭐ Уровень</label><input type="number" id="itemLevel" value="${data ? data.level : ''}"></div>${extraField ? `<div class="form-group">${extraField}</div>` : ''}</div>
                 <div class="form-group"><button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('iconRow').value=r; document.getElementById('iconCol').value=c; document.getElementById('iconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button><div id="iconPreview" class="icon-preview">${data ? `Текущая: ряд ${data.icon_row + 1}, колонка ${data.icon_col + 1}` : '❌ Не выбрано'}</div><input type="hidden" id="iconRow" value="${data ? data.icon_row : 19}"><input type="hidden" id="iconCol" value="${data ? data.icon_col : 4}"></div>
                 <div class="stats-grid" id="statsGrid"></div>
-                <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3">${data ? escapeHtml(data.description) : ''}</textarea></div>`;
+                <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3" placeholder="Описание...">${data ? escapeHtml(data.description || '') : ''}</textarea></div>`;
+                container.innerHTML = html;
+                
+                // ========== ПРОВЕРКА ДУБЛИКАТОВ ДЛЯ ДЕМОНОВ/ТОТЕМОВ/РУН ==========
+                const nameInput = document.getElementById('itemName');
+                const saveBtn = document.querySelector('.modal-buttons .cat-btn:first-child');
+                
+                let getFunction = null;
+                if (type === 'demons') getFunction = getDemons;
+                else if (type === 'totems') getFunction = getTotems;
+                else if (type === 'master') getFunction = getMasterRunes;
+                else if (type === 'druids') getFunction = getDruidsRunes;
+                else if (type === 'nakolki') getFunction = getNakolki;
+                
+                async function checkGenericDuplicate() {
+                    const currentName = nameInput ? nameInput.value.trim() : '';
+                    if(!currentName) {
+                        let existingWarning = document.getElementById('duplicateWarning');
+                        if(existingWarning) existingWarning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                        return;
+                    }
+                    
+                    const allItems = await getFunction();
+                    const isDuplicate = allItems.find(item => 
+                        item.name.toLowerCase() === currentName.toLowerCase() &&
+                        (currentId === null || item.id !== currentId)
+                    );
+                    
+                    let warning = document.getElementById('duplicateWarning');
+                    if(isDuplicate) {
+                        if(!warning) {
+                            const formRow = document.querySelector('#modalFields .form-row');
+                            const div = document.createElement('div');
+                            div.id = 'duplicateWarning';
+                            div.style.cssText = 'background:rgba(255,68,68,0.2);border:1px solid #ff4444;border-radius:8px;padding:8px;margin-top:10px;text-align:center;color:#ff8888;font-size:12px;';
+                            div.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! "${currentName}" уже существует!`;
+                            if(formRow) formRow.after(div);
+                            else document.getElementById('modalFields').appendChild(div);
+                        } else {
+                            warning.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! "${currentName}" уже существует!`;
+                            warning.style.display = 'block';
+                        }
+                        if(saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
+                    } else {
+                        if(warning) warning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                    }
+                }
+                
+                if(nameInput) nameInput.addEventListener('input', checkGenericDuplicate);
             }
             else if (type === 'news') {
                 html = `<div class="form-row"><div class="form-group"><label>📰 Заголовок</label><input type="text" id="newsTitle" value="${data ? escapeHtml(data.title) : ''}"></div></div>
                 <div class="form-group"><label>📄 Текст</label><textarea id="newsContent" rows="5">${data ? escapeHtml(data.content) : ''}</textarea></div>
                 <div class="form-group"><label>✍️ Подпись</label><input type="text" id="newsFooter" value="${data ? escapeHtml(data.footer || 'С уважением, команда MMOBitva!') : 'С уважением, команда MMOBitva!'}" placeholder="Подпись в конце новости"></div>
                 <div class="form-group"><label>📅 Дата</label><input type="date" id="newsDate" value="${data ? data.date : ''}"></div>`;
+                container.innerHTML = html;
+                
+                // ========== ПРОВЕРКА ДУБЛИКАТОВ НОВОСТЕЙ ==========
+                const titleInput = document.getElementById('newsTitle');
+                const saveBtn = document.querySelector('.modal-buttons .cat-btn:first-child');
+                
+                async function checkNewsDuplicate() {
+                    const currentTitle = titleInput ? titleInput.value.trim() : '';
+                    if(!currentTitle) {
+                        let existingWarning = document.getElementById('duplicateWarning');
+                        if(existingWarning) existingWarning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                        return;
+                    }
+                    
+                    const allNews = await getNews();
+                    const isDuplicate = allNews.find(item => 
+                        item.title.toLowerCase() === currentTitle.toLowerCase() &&
+                        (currentId === null || item.id !== currentId)
+                    );
+                    
+                    let warning = document.getElementById('duplicateWarning');
+                    if(isDuplicate) {
+                        if(!warning) {
+                            const formRow = document.querySelector('#modalFields .form-row');
+                            const div = document.createElement('div');
+                            div.id = 'duplicateWarning';
+                            div.style.cssText = 'background:rgba(255,68,68,0.2);border:1px solid #ff4444;border-radius:8px;padding:8px;margin-top:10px;text-align:center;color:#ff8888;font-size:12px;';
+                            div.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! Новость с заголовком "${currentTitle}" уже существует!`;
+                            if(formRow) formRow.after(div);
+                            else document.getElementById('modalFields').appendChild(div);
+                        } else {
+                            warning.innerHTML = `⚠️ ПРЕДУПРЕЖДЕНИЕ! Новость с заголовком "${currentTitle}" уже существует!`;
+                            warning.style.display = 'block';
+                        }
+                        if(saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
+                    } else {
+                        if(warning) warning.remove();
+                        if(saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+                    }
+                }
+                
+                if(titleInput) titleInput.addEventListener('input', checkNewsDuplicate);
             }
-            container.innerHTML = html;
+            
+            // ========== ОБЩАЯ ЧАСТЬ ДЛЯ СТАТОВ (НЕ НОВОСТИ) ==========
             if (type !== 'news') {
                 const stats = data ? data.stats : {};
                 const statsList = (type === 'items') ? ['уровень', 'износ', 'количество', 'годность', 'точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'] : ['точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'];
                 const icons = { 'уровень': 'stat-icon-уровень', 'износ': 'stat-icon-износ', 'количество': 'stat-icon-количество', 'годность': 'stat-icon-годность', 'точность': 'stat-icon-точность', 'урон': 'stat-icon-урон', 'блок': 'stat-icon-блок', 'уворот': 'stat-icon-уворот', 'оглушение': 'stat-icon-оглушение', 'броня': 'stat-icon-броня', 'здоровье': 'stat-icon-здоровье' };
                 const names = { 'уровень': 'Уровень', 'износ': 'Износ', 'количество': 'Количество', 'годность': 'Годность', 'точность': 'Точность', 'урон': 'Урон', 'блок': 'Блок', 'уворот': 'Уворот', 'оглушение': 'Оглушение', 'броня': 'Броня', 'здоровье': 'Здоровье' };
                 const statsGrid = document.getElementById('statsGrid');
-                statsGrid.innerHTML = '';
-                statsList.forEach(stat => {
-                    const div = document.createElement('div');
-                    div.className = 'stat-field';
-                    div.innerHTML = `<label><span class="stat-icon ${icons[stat]}"></span> ${names[stat]}:</label><input type="text" class="stat-${stat}" value="${stats[stat] || ''}" placeholder="Значение">`;
-                    statsGrid.appendChild(div);
-                });
+                if(statsGrid) {
+                    statsGrid.innerHTML = '';
+                    statsList.forEach(stat => {
+                        const div = document.createElement('div');
+                        div.className = 'stat-field';
+                        div.innerHTML = `<label><span class="stat-icon ${icons[stat]}"></span> ${names[stat]}:</label><input type="text" class="stat-${stat}" value="${stats[stat] || ''}" placeholder="Значение">`;
+                        statsGrid.appendChild(div);
+                    });
+                }
                 if (type === 'items') {
                     const uniqueStats = data ? (data.unique_stats || []) : [];
                     const uniqueContainer = document.getElementById('uniqueContainer');
-                    uniqueContainer.innerHTML = '';
-                    uniqueStats.forEach(u => addUniqueField(u));
+                    if(uniqueContainer) {
+                        uniqueContainer.innerHTML = '';
+                        uniqueStats.forEach(u => addUniqueField(u));
+                    }
                 }
             }
+            
             document.getElementById('editModal').style.display = 'flex';
         }
 
-        function addUniqueField(value = '') { const container = document.getElementById('uniqueContainer'); const div = document.createElement('div'); div.className = 'unique-row'; div.innerHTML = `<input type="text" class="unique-value" value="${escapeHtml(value)}" placeholder="Уникальная характеристика"><button onclick="this.parentElement.remove()">🗑️</button>`; container.appendChild(div); }
+        function addUniqueField(value = '') { 
+            const container = document.getElementById('uniqueContainer'); 
+            if(!container) return;
+            const div = document.createElement('div'); 
+            div.className = 'unique-row'; 
+            div.innerHTML = `<input type="text" class="unique-value" value="${escapeHtml(value)}" placeholder="Уникальная характеристика"><button onclick="this.parentElement.remove()">🗑️</button>`; 
+            container.appendChild(div); 
+        }
 
         function collectStats(type) {
             const stats = {};
@@ -695,43 +1037,108 @@
             statsList.forEach(stat => { const input = document.querySelector(`.stat-${stat}`); if (input && input.value.trim()) stats[stat] = input.value.trim(); });
             return stats;
         }
-        function collectUniqueStats() { const unique = []; document.querySelectorAll('.unique-value').forEach(input => { if (input.value.trim()) unique.push(input.value.trim()); }); return unique; }
+        
+        function collectUniqueStats() { 
+            const unique = []; 
+            document.querySelectorAll('.unique-value').forEach(input => { if (input.value.trim()) unique.push(input.value.trim()); }); 
+            return unique; 
+        }
 
         async function saveData() {
             let item = {};
+            
             if (currentType === 'items') {
-                item = { name: document.getElementById('itemName').value, type: document.getElementById('itemType').value, level: parseInt(document.getElementById('itemLevel').value), style: document.getElementById('itemStyle').value, icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('items'), unique_stats: collectUniqueStats() };
-                if (currentId) item.id = currentId; await saveItem(item);
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemType = document.getElementById('itemType').value;
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                
+                if (!itemName) { alert('❌ Введите название предмета!'); return; }
+                
+                const isDuplicate = await checkDuplicateItem(itemName, itemType, currentId);
+                if (isDuplicate) {
+                    alert(`❌ Ошибка! Предмет "${itemName}" с типом "${itemType}" уже существует!`);
+                    return;
+                }
+                
+                item = { 
+                    name: itemName, 
+                    type: itemType, 
+                    level: parseInt(document.getElementById('itemLevel').value), 
+                    style: document.getElementById('itemStyle').value, 
+                    icon: 'shop-icon', 
+                    icon_row: parseInt(document.getElementById('iconRow').value), 
+                    icon_col: parseInt(document.getElementById('iconCol').value), 
+                    stats: collectStats('items'), 
+                    unique_stats: collectUniqueStats(),
+                    description: itemDescription
+                };
+                if (currentId) item.id = currentId; 
+                await saveItem(item);
             }
             else if (currentType === 'demons') {
-                item = { name: document.getElementById('itemName').value, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: document.getElementById('description').value };
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                if (!itemName) { alert('❌ Введите название!'); return; }
+                const isDuplicate = await checkDuplicateGeneric(itemName, currentId, getDemons);
+                if (isDuplicate) { alert(`❌ Ошибка! Демон "${itemName}" уже существует!`); return; }
+                item = { name: itemName, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: itemDescription };
                 if (currentId) item.id = currentId; await saveDemon(item);
             }
             else if (currentType === 'totems') {
-                item = { name: document.getElementById('itemName').value, level: parseInt(document.getElementById('itemLevel').value), required_level: parseInt(document.getElementById('requiredLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: document.getElementById('description').value };
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                if (!itemName) { alert('❌ Введите название!'); return; }
+                const isDuplicate = await checkDuplicateGeneric(itemName, currentId, getTotems);
+                if (isDuplicate) { alert(`❌ Ошибка! Тотем "${itemName}" уже существует!`); return; }
+                item = { name: itemName, level: parseInt(document.getElementById('itemLevel').value), required_level: parseInt(document.getElementById('requiredLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: itemDescription };
                 if (currentId) item.id = currentId; await saveTotem(item);
             }
             else if (currentType === 'master') {
-                item = { name: document.getElementById('itemName').value, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: document.getElementById('description').value };
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                if (!itemName) { alert('❌ Введите название!'); return; }
+                const isDuplicate = await checkDuplicateGeneric(itemName, currentId, getMasterRunes);
+                if (isDuplicate) { alert(`❌ Ошибка! Руна мастера "${itemName}" уже существует!`); return; }
+                item = { name: itemName, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: itemDescription };
                 if (currentId) item.id = currentId; await saveMasterRune(item);
             }
             else if (currentType === 'druids') {
-                item = { name: document.getElementById('itemName').value, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: document.getElementById('description').value };
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                if (!itemName) { alert('❌ Введите название!'); return; }
+                const isDuplicate = await checkDuplicateGeneric(itemName, currentId, getDruidsRunes);
+                if (isDuplicate) { alert(`❌ Ошибка! Руна друидов "${itemName}" уже существует!`); return; }
+                item = { name: itemName, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: itemDescription };
                 if (currentId) item.id = currentId; await saveDruidsRune(item);
             }
             else if (currentType === 'nakolki') {
-                item = { name: document.getElementById('itemName').value, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: document.getElementById('description').value };
+                const itemName = document.getElementById('itemName').value.trim();
+                const itemDescription = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+                if (!itemName) { alert('❌ Введите название!'); return; }
+                const isDuplicate = await checkDuplicateGeneric(itemName, currentId, getNakolki);
+                if (isDuplicate) { alert(`❌ Ошибка! Квестовая руна "${itemName}" уже существует!`); return; }
+                item = { name: itemName, level: parseInt(document.getElementById('itemLevel').value), icon: 'shop-icon', icon_row: parseInt(document.getElementById('iconRow').value), icon_col: parseInt(document.getElementById('iconCol').value), stats: collectStats('default'), description: itemDescription };
                 if (currentId) item.id = currentId; await saveNakolki(item);
             }
             else if (currentType === 'news') {
-                item = { title: document.getElementById('newsTitle').value, content: document.getElementById('newsContent').value, date: document.getElementById('newsDate').value };
+                const newsTitle = document.getElementById('newsTitle').value.trim();
+                if (!newsTitle) { alert('❌ Введите заголовок новости!'); return; }
+                const allNews = await getNews();
+                const isDuplicate = allNews.find(n => n.title.toLowerCase() === newsTitle.toLowerCase() && (currentId === null || n.id !== currentId));
+                if (isDuplicate) { alert(`❌ Ошибка! Новость с заголовком "${newsTitle}" уже существует!`); return; }
+                item = { title: newsTitle, content: document.getElementById('newsContent').value, footer: document.getElementById('newsFooter').value, date: document.getElementById('newsDate').value };
                 if (currentId) item.id = currentId; await saveNewsItem(item);
             }
-            closeModal(); loadTable(currentType); alert('✅ Сохранено!');
+            
+            closeModal(); 
+            loadTable(currentType); 
+            alert('✅ Сохранено!');
         }
+        
         function closeModal() { document.getElementById('editModal').style.display = 'none'; currentId = null; }
-        loadTable('items'); document.addEventListener('DOMContentLoaded', displayAdminPanel);
+        
+        loadTable('items'); 
+        document.addEventListener('DOMContentLoaded', displayAdminPanel);
     </script>
 </body>
-
 </html>
