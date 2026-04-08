@@ -375,7 +375,7 @@ body{padding:10px;}
 .item-card-stat-line{font-size:10px;}
 .compare-btn,.close-modal-btn{padding:6px 16px;font-size:11px;}
 .select-item-content{width:95%;}
-.select-item-option .shop-icon{width:50px!important;height:50px!important;}
+.select-item-option .shop-icon{width:80px!important;height:80px!important;}
 .select-item-name{font-size:12px;}
 .select-item-type{font-size:10px;}
 .circles-grid,.runes-grid,.totems-grid{grid-template-columns:repeat(2,1fr);gap:12px;}
