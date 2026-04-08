@@ -340,21 +340,29 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 @keyframes modalFadeIn{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px #2c7a2c;}50%{opacity:0.85;box-shadow:0 0 20px #2c7a2c;}}
 
-/* ===== АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ (ИКОНКИ ОСТАЮТСЯ 80x80) ===== */
+/* ==================== АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ (ВСЕ СТРАНИЦЫ) ==================== */
 @media (max-width: 768px){
 body{padding:10px;}
 .wrapper{padding:12px;}
+
+/* ШАПКА АДМИНА И ЮЗЕРА */
 .admin-panel{flex-direction:column;align-items:stretch;gap:10px;padding:12px;}
 .admin-info{justify-content:center;padding-bottom:8px;border-bottom:1px solid rgba(199,186,0,0.3);}
 .admin-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
 .admin-actions .admin-btn{padding:6px 14px;font-size:11px;}
+
+/* ОСНОВНАЯ ШАПКА */
 .header-wrapper{flex-direction:column;gap:10px;padding:12px;}
 .header-wrapper .site-title{font-size:20px;order:2;}
 .header-wrapper a:first-child{order:1;}
 .header-wrapper a:last-child{order:3;}
 .header-wrapper a{padding:5px 10px;font-size:11px;text-align:center;}
+
+/* КНОПКИ КАТЕГОРИЙ */
 .categories{justify-content:center;}
 .cat-btn{padding:6px 12px;font-size:11px;}
+
+/* ТАБЛИЦА ПРЕДМЕТОВ MAIN.HTML */
 .items-table tbody{grid-template-columns:repeat(2,1fr);gap:8px;}
 .items-table tr{padding:6px;}
 .item-cell .shop-icon{width:80px!important;height:80px!important;}
@@ -362,10 +370,16 @@ body{padding:10px;}
 .style-cell{font-size:10px;padding:3px 10px;min-width:auto;}
 .item-type{font-size:9px;}
 .item-level{font-size:10px;}
+
+/* ПАНЕЛЬ ПОИСКА */
 .sort-panel{flex-direction:column;align-items:stretch;padding:10px;}
 .sort-panel input{width:100%;}
 .sort-controls{justify-content:flex-start;flex-wrap:wrap;}
+
+/* ФИЛЬТР БАР */
 .filter-bar{flex-direction:column;align-items:center;gap:8px;}
+
+/* МОДАЛКИ СРАВНЕНИЯ */
 .item-card-modal{width:95%;margin:0 auto;}
 .item-compare-container{flex-direction:column;align-items:center;}
 .item-card-modal.compared{margin-top:15px;}
@@ -374,48 +388,80 @@ body{padding:10px;}
 .item-card-stats{padding:8px;}
 .item-card-stat-line{font-size:10px;}
 .compare-btn,.close-modal-btn{padding:6px 16px;font-size:11px;}
-.select-item-content{width:95%;}
-.select-item-option .shop-icon{width:50px!important;height:50px!important;}
-.select-item-name{font-size:12px;}
+
+/* МОДАЛКА ВЫБОРА ПРЕДМЕТА (ИКОНКИ 80x80, УМЕНЬШЕННАЯ) */
+.select-item-content{width:95%;max-width:95%;padding:0;}
+.select-item-header{padding:12px;}
+.select-item-header h3{font-size:16px;}
+.select-item-close{font-size:22px;top:8px;right:12px;}
+.select-item-content input{margin:10px;padding:8px;font-size:12px;}
+.select-item-list{max-height:55vh;padding:0 8px 8px 8px;}
+.select-item-option{gap:10px;padding:8px;}
+.select-item-option .shop-icon{width:80px!important;height:80px!important;flex-shrink:0;}
+.select-item-info{flex:1;min-width:0;}
+.select-item-name{font-size:12px;word-break:break-word;}
 .select-item-type{font-size:10px;}
+.select-item-empty{padding:20px;font-size:12px;}
+
+/* КАРТОЧКИ (DEMON, RUNES, TOTEMS) */
 .circles-grid,.runes-grid,.totems-grid{grid-template-columns:repeat(2,1fr);gap:12px;}
 .circle-card,.rune-card,.totem-card{padding:10px;}
 .circle-name,.rune-name,.totem-name{font-size:14px;}
 .circle-icon,.rune-icon,.totem-icon{width:80px!important;height:80px!important;}
+
+/* АДМИНКА */
 .admin-table{display:block;overflow-x:auto;}
 .admin-table th,.admin-table td{padding:6px;font-size:11px;}
-.admin-tabs{justify-content:center;}
+.admin-tabs{justify-content:center;flex-wrap:wrap;}
 .admin-tab{padding:6px 12px;font-size:11px;}
+.admin-panel-content .add-btn{width:100%;text-align:center;}
+
+/* МОДАЛКИ АДМИНКИ */
 .modal-content{padding:15px;width:95%!important;}
 .form-row{flex-direction:column;gap:10px;}
 .stats-grid{grid-template-columns:1fr;}
 .stat-field{flex-wrap:wrap;}
 .stat-field label{min-width:80px;}
+
+/* ПИКЕР ИКОНОК */
 .icon-grid-inner{grid-template-columns:repeat(6,60px);}
 .icon-cell{width:60px;height:60px;background-size:auto 60px;}
+
+/* НОВОСТИ */
 .news-card-header{padding:10px;}
 .news-title{font-size:16px;}
 .news-content{font-size:12px;}
+.latest-news-grid{grid-template-columns:1fr;}
+.latest-news-title{font-size:16px;}
+
+/* КОНТАКТЫ */
 .contact-item{flex-direction:column;text-align:center;}
 .contact-icon{margin:0 auto;}
 .social-links{flex-direction:column;align-items:center;}
 .social-link{width:80%;justify-content:center;}
+
+/* АВТОРИЗАЦИЯ */
 .auth-box{padding:25px;width:95%;}
 .auth-title{font-size:24px;}
 .auth-subtitle{font-size:12px;}
 .auth-input-group input{padding:10px;}
+
+/* ГЛАВНОЕ МЕНЮ */
 .button-grid{grid-template-columns:repeat(2,1fr);gap:12px;}
 .main-btn{padding:12px 8px;font-size:14px;}
 .main-btn span{font-size:12px;}
-.latest-news-grid{grid-template-columns:1fr;}
-.latest-news-title{font-size:16px;}
+
+/* PROFILE - ЛИЧНЫЙ КАБИНЕТ */
 .profile-container{padding:5px;}
 .character-card{padding:12px;}
 .character-name{font-size:18px;}
 .character-name::before{font-size:18px;}
 .delete-char-btn{padding:5px 12px;font-size:10px;}
 .refresh-all-btn{padding:5px 12px;font-size:10px;}
-.character-header{gap:5px;}
+.character-header{gap:5px;flex-wrap:wrap;justify-content:center;}
+.refresh-all-btn{order:1;}
+.character-name{order:2;width:100%;margin:5px 0;}
+.delete-char-btn{order:3;}
 .timer-item{padding:6px 10px;}
 .timer-name{font-size:12px;max-width:150px;}
 .timer-status{font-size:8px;padding:2px 8px;}
@@ -424,6 +470,8 @@ body{padding:10px;}
 .timer-btn{padding:4px 10px;font-size:9px;}
 .add-timer-btn{padding:8px 16px;font-size:12px;}
 .add-character-btn{padding:10px 20px;font-size:14px;}
+
+/* МОДАЛКИ PROFILE */
 .add-char-modal{padding:20px;width:95%;}
 .add-char-modal h2{font-size:20px;}
 .timer-modal-content{padding:20px;width:95%;}
@@ -433,27 +481,23 @@ body{padding:10px;}
 .modal-save-btn,.modal-cancel-btn{padding:6px 12px;min-width:90px;font-size:11px;}
 }
 
+/* ДЛЯ САМЫХ МАЛЕНЬКИХ ТЕЛЕФОНОВ */
 @media (max-width: 480px){
 .items-table tbody{grid-template-columns:1fr;}
 .circles-grid,.runes-grid,.totems-grid{grid-template-columns:1fr;}
 .button-grid{grid-template-columns:1fr;}
-.admin-tabs{flex-wrap:wrap;}
 .admin-tab{width:calc(50% - 10px);text-align:center;}
 .icon-grid-inner{grid-template-columns:repeat(4,60px);}
-.character-header{flex-wrap:wrap;justify-content:center;}
-.refresh-all-btn{order:1;}
-.character-name{order:2;width:100%;margin:5px 0;}
-.delete-char-btn{order:3;}
 .timer-name{max-width:120px;font-size:11px;}
 .timer-status{font-size:7px;padding:2px 6px;}
 .timer-item.expanded .timer-time{font-size:18px;}
 .timer-item.expanded .timer-name{font-size:12px;}
 }
 
+/* ДЛЯ АДМИНКИ (ДОПОЛНИТЕЛЬНО) */
 @media (max-width: 768px){
 .admin-panel-content .admin-table{display:block;overflow-x:auto;white-space:nowrap;}
 .admin-panel-content .admin-table th,.admin-panel-content .admin-table td{white-space:nowrap;}
-.admin-panel-content .add-btn{width:100%;text-align:center;}
 .modal .modal-content{width:95%!important;padding:15px!important;}
 .modal .stats-grid{grid-template-columns:1fr!important;}
 .modal .form-row{flex-direction:column!important;}
