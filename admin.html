@@ -944,12 +944,22 @@
                 if(nameInput) nameInput.addEventListener('input', checkGenericDuplicate);
             }
             else if (type === 'news') {
+                const categoryOptions = ['default', 'update', 'event', 'patch'];
+                const categoryNames = ['📰 Обычная', '⚙️ Обновление', '🎉 Событие', '🔧 Патч'];
+                let categorySelect = '<select id="newsCategory" class="form-control">';
+                for(let i = 0; i < categoryOptions.length; i++) {
+                    const selected = (data && data.category === categoryOptions[i]) ? 'selected' : '';
+                    categorySelect += `<option value="${categoryOptions[i]}" ${selected}>${categoryNames[i]}</option>`;
+                }
+                categorySelect += '</select>';
+                
                 html = `<div class="form-row"><div class="form-group"><label>📰 Заголовок</label><input type="text" id="newsTitle" value="${data ? escapeHtml(data.title) : ''}"></div></div>
+                <div class="form-row"><div class="form-group"><label>🏷️ Категория</label>${categorySelect}</div></div>
                 <div class="form-group"><label>📄 Текст</label><textarea id="newsContent" rows="5">${data ? escapeHtml(data.content) : ''}</textarea></div>
                 <div class="form-group"><label>✍️ Подпись</label><input type="text" id="newsFooter" value="${data ? escapeHtml(data.footer || 'С уважением, команда MMOBitva!') : 'С уважением, команда MMOBitva!'}" placeholder="Подпись в конце новости"></div>
                 <div class="form-group"><label>📅 Дата</label><input type="date" id="newsDate" value="${data ? data.date : ''}"></div>`;
                 container.innerHTML = html;
-                
+
                 // ========== ПРОВЕРКА ДУБЛИКАТОВ НОВОСТЕЙ ==========
                 const titleInput = document.getElementById('newsTitle');
                 const saveBtn = document.querySelector('.modal-buttons .cat-btn:first-child');
@@ -1126,8 +1136,15 @@
                 const allNews = await getNews();
                 const isDuplicate = allNews.find(n => n.title.toLowerCase() === newsTitle.toLowerCase() && (currentId === null || n.id !== currentId));
                 if (isDuplicate) { alert(`❌ Ошибка! Новость с заголовком "${newsTitle}" уже существует!`); return; }
-                item = { title: newsTitle, content: document.getElementById('newsContent').value, footer: document.getElementById('newsFooter').value, date: document.getElementById('newsDate').value };
-                if (currentId) item.id = currentId; await saveNewsItem(item);
+                item = { 
+                    title: newsTitle, 
+                    content: document.getElementById('newsContent').value, 
+                    footer: document.getElementById('newsFooter').value, 
+                    date: document.getElementById('newsDate').value,
+                    category: document.getElementById('newsCategory').value 
+                };
+                if (currentId) item.id = currentId; 
+                await saveNewsItem(item);
             }
             
             closeModal(); 

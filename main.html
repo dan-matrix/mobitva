@@ -98,6 +98,10 @@
         <table class="items-table">
             <tbody id="itemsList"></tbody>
         </table>
+
+        <!-- Пагинация -->
+        <div class="pagination-container" id="paginationContainer"
+            style="display:flex; justify-content:center; gap:10px; margin-top:25px; flex-wrap:wrap;"></div>
     </div>
 
     <!-- Модалка сравнения предметов -->
@@ -123,6 +127,13 @@
     <script>
         if (!checkAuth()) { window.location.href = 'auth.html'; }
 
+        // Обработка параметров URL для глобального поиска
+        const urlParams = new URLSearchParams(window.location.search);
+        const itemId = urlParams.get('item');
+        if (itemId) {
+            setTimeout(() => openItemModal(parseInt(itemId)), 500);
+        }
+
         let allItems = [];
         let currentSortField = 'level';
         let currentSortDir = 'asc';
@@ -132,12 +143,17 @@
         let currentMainItem = null;
         let compareItems = [];
 
+        // Пагинация
+        let currentPage = 1;
+        let itemsPerPage = 50;
+        let filteredItems = [];
+
         async function loadData() {
             allItems = await getItems();
-            renderItems();
+            applyFiltersAndRender();
         }
 
-        function renderItems() {
+        function applyFiltersAndRender() {
             let filtered = [...allItems];
 
             if (currentSearch !== '') {
@@ -163,93 +179,102 @@
                 }
             });
 
+            filteredItems = filtered;
+            currentPage = 1;
+            renderItemsWithPagination();
+        }
+
+        function renderItemsWithPagination() {
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageItems = filteredItems.slice(start, end);
+
             const counter = document.getElementById('resultCount');
             if (counter) {
-                counter.innerHTML = `📦 Найдено: ${filtered.length} из ${allItems.length}`;
+                counter.innerHTML = `📦 Найдено: ${filteredItems.length} из ${allItems.length} | Страница ${currentPage} из ${Math.ceil(filteredItems.length / itemsPerPage)}`;
             }
 
             const container = document.getElementById('itemsList');
             if (!container) return;
 
-            if (filtered.length === 0) {
-                container.innerHTML = `<tr><td colspan="4"><div class="no-items">🔍 Ничего не найдено...</div></td></td>`;
+            if (pageItems.length === 0) {
+                container.innerHTML = `<tr><td colspan="4"><div class="no-items">🔍 Ничего не найдено...</div></td></tr>`;
+                document.getElementById('paginationContainer').innerHTML = '';
                 return;
             }
 
             let html = '';
-            for (const item of filtered) {
+            for (const item of pageItems) {
                 const styleText = getRussianStyleText(item.style);
                 const styleClass = item.style || '';
                 html += `
-            <tr onclick="openItemModal(${item.id})">
-                <td>
-                    <div class="item-cell">
-                        <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col};"></div>
-                        <span>${escapeHtml(item.name)}</span>
-                    </div>
-                </td>
-                <td class="style-cell ${styleClass}">${styleText}</td>
-                <td class="item-type">${item.type}</td>
-                <td class="item-level">⭐ ${item.level}</td>
-            </tr>
-        `;
+                    <tr onclick="openItemModal(${item.id})">
+                        <td>
+                            <div class="item-cell">
+                                <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col};"></div>
+                                <span>${escapeHtml(item.name)}</span>
+                            </div>
+                        </td>
+                        <td class="style-cell ${styleClass}">${styleText}</td>
+                        <td class="item-type">${item.type}</td>
+                        <td class="item-level">⭐ ${item.level}</td>
+                    </tr>
+                `;
             }
+            container.innerHTML = html;
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            const container = document.getElementById('paginationContainer');
+            if (!container) return;
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Первая страница
+            if (currentPage > 1) {
+                html += `<button class="pagination-btn" onclick="goToPage(1)">⏮️ 1</button>`;
+                html += `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})">◀ Назад</button>`;
+            }
+
+            // Номера страниц
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) html += `<span class="pagination-dots">...</span>`;
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<button class="pagination-btn active">${i}</button>`;
+                } else {
+                    html += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+                }
+            }
+            if (endPage < totalPages) html += `<span class="pagination-dots">...</span>`;
+
+            // Последняя страница
+            if (currentPage < totalPages) {
+                html += `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Вперед ▶</button>`;
+                html += `<button class="pagination-btn" onclick="goToPage(${totalPages})">${totalPages} ⏩</button>`;
+            }
+
             container.innerHTML = html;
         }
 
-        // Функция рендера карточки предмета для модалки - использует renderStats из statico.js
-        function renderItemCard(item, isCompare = false, compareIndex = null) {
-            const stats = item.stats || {};
-            const uniqueStats = item.unique_stats || [];
+        function goToPage(page) {
+            currentPage = page;
+            renderItemsWithPagination();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
-            // Генерируем статы через функцию из statico.js
-            const statsContainer = document.createElement('div');
-            renderStats(stats, statsContainer);
-            const statsHtml = statsContainer.innerHTML;
-
-            let uniqueHtml = '';
-            if (uniqueStats && uniqueStats.length > 0) {
-                uniqueHtml = `
-            <div class="item-card-unique">
-                <div class="item-card-unique-title">✨ УНИКАЛЬНЫЕ ХАРАКТЕРИСТИКИ</div>
-                <ul class="item-card-unique-list">
-                    ${uniqueStats.map(u => `<li>${escapeHtml(u)}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-            }
-
-            const styleText = getRussianStyleText(item.style);
-            const styleName = item.style === 'rare' ? 'Урон' : item.style === 'uncommon' ? 'Уворот' : item.style === 'armor' ? 'Броня' : item.style === 'epic' ? 'Элита' : '—';
-            const styleClass = item.style || '';
-
-            return `
-        <div class="item-card-modal ${isCompare ? 'compared' : ''}" data-item-id="${item.id}">
-            <div class="item-card-header">
-                ${compareIndex !== null ? `<button class="item-card-remove" onclick="removeCompareItem(${compareIndex})">🗑️</button>` : '<div class="item-card-close" onclick="closeCompareModal()">✕</div>'}
-                <div class="item-card-icon">
-                    <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col};"></div>
-                </div>
-                <div class="item-card-title">${escapeHtml(item.name)}</div>
-                <div class="item-card-subtitle"><span class="style-cell ${styleClass}" style="display:inline-block; margin:0 auto; font-size:12px; padding:4px 12px;">${styleName}</span> | ${item.type}</div>
-                <div class="item-card-level">⭐ Уровень ${item.level}</div>
-            </div>
-            <div class="item-card-body">
-                <div class="item-card-stats">
-                    <div class="item-card-stats-title">📊 ХАРАКТЕРИСТИКИ</div>
-                    ${statsHtml || '<div style="text-align:center;color:#666;">Нет характеристик</div>'}
-                </div>
-                ${uniqueHtml}
-                <div class="item-card-description">
-                    ${item.description ? escapeHtml(item.description) : 'Описание отсутствует'}
-                </div>
-            </div>
-            <div class="item-card-footer">
-                ${!isCompare ? `<button class="compare-btn" onclick="openSelectItemModal(${item.id})">➕ Сравнить</button>` : ''}
-                ${isCompare ? '' : '<button class="close-modal-btn" onclick="closeCompareModal()">Закрыть</button>'}
-            </div>
-        </div>
-    `;
+        function renderItems() {
+            applyFiltersAndRender();
         }
 
         function openItemModal(itemId) {
@@ -262,6 +287,58 @@
             const container = document.getElementById('compareContainer');
             container.innerHTML = renderItemCard(item, false);
             document.getElementById('compareModal').style.display = 'flex';
+        }
+
+        function renderItemCard(item, isCompare = false, compareIndex = null) {
+            const stats = item.stats || {};
+            const uniqueStats = item.unique_stats || [];
+
+            const statsContainer = document.createElement('div');
+            renderStats(stats, statsContainer);
+            const statsHtml = statsContainer.innerHTML;
+
+            let uniqueHtml = '';
+            if (uniqueStats && uniqueStats.length > 0) {
+                uniqueHtml = `
+                    <div class="item-card-unique">
+                        <div class="item-card-unique-title">✨ УНИКАЛЬНЫЕ ХАРАКТЕРИСТИКИ</div>
+                        <ul class="item-card-unique-list">
+                            ${uniqueStats.map(u => `<li>${escapeHtml(u)}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            const styleName = item.style === 'rare' ? 'Урон' : item.style === 'uncommon' ? 'Уворот' : item.style === 'armor' ? 'Броня' : item.style === 'epic' ? 'Элита' : '—';
+            const styleClass = item.style || '';
+
+            return `
+                <div class="item-card-modal ${isCompare ? 'compared' : ''}" data-item-id="${item.id}">
+                    <div class="item-card-header">
+                        ${compareIndex !== null ? `<button class="item-card-remove" onclick="removeCompareItem(${compareIndex})">🗑️</button>` : '<div class="item-card-close" onclick="closeCompareModal()">✕</div>'}
+                        <div class="item-card-icon">
+                            <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col};"></div>
+                        </div>
+                        <div class="item-card-title">${escapeHtml(item.name)}</div>
+                        <div class="item-card-subtitle"><span class="style-cell ${styleClass}" style="display:inline-block; margin:0 auto; font-size:12px; padding:4px 12px;">${styleName}</span> | ${item.type}</div>
+                        <div class="item-card-level">⭐ Уровень ${item.level}</div>
+                    </div>
+                    <div class="item-card-body">
+                        <div class="item-card-stats">
+                            <div class="item-card-stats-title">📊 ХАРАКТЕРИСТИКИ</div>
+                            ${statsHtml || '<div style="text-align:center;color:#666;">Нет характеристик</div>'}
+                        </div>
+                        ${uniqueHtml}
+                        <div class="item-card-description">
+                            ${item.description ? escapeHtml(item.description) : 'Описание отсутствует'}
+                        </div>
+                    </div>
+                    <div class="item-card-footer">
+                        ${!isCompare ? `<button class="compare-btn" onclick="openSelectItemModal(${item.id})">➕ Сравнить</button>` : ''}
+                        ${isCompare ? '' : '<button class="close-modal-btn" onclick="closeCompareModal()">Закрыть</button>'}
+                    </div>
+                </div>
+            `;
         }
 
         function openSelectItemModal(excludeId) {
@@ -291,14 +368,14 @@
             let html = '';
             for (const item of filtered) {
                 html += `
-            <div class="select-item-option" onclick="addCompareItemFromSelect(${item.id})">
-                <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col}; width:80px; height:80px;"></div>
-                <div class="select-item-info">
-                    <div class="select-item-name">${escapeHtml(item.name)}</div>
-                    <div class="select-item-type">${item.type} | ⭐ ${item.level}</div>
-                </div>
-            </div>
-        `;
+                    <div class="select-item-option" onclick="addCompareItemFromSelect(${item.id})">
+                        <div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col}; width:80px; height:80px;"></div>
+                        <div class="select-item-info">
+                            <div class="select-item-name">${escapeHtml(item.name)}</div>
+                            <div class="select-item-type">${item.type} | ⭐ ${item.level}</div>
+                        </div>
+                    </div>
+                `;
             }
             listContainer.innerHTML = html;
         }
@@ -325,7 +402,6 @@
 
         function removeCompareItem(index) {
             compareItems.splice(index, 1);
-
             const container = document.getElementById('compareContainer');
             let html = renderItemCard(currentMainItem, false);
             for (let i = 0; i < compareItems.length; i++) {
@@ -352,24 +428,24 @@
                 currentSortField = field;
                 currentSortDir = 'asc';
             }
-            renderItems();
+            applyFiltersAndRender();
         }
 
         function filterByType(type) {
             currentTypeFilter = type;
-            renderItems();
+            applyFiltersAndRender();
             closeAllDropdowns();
         }
 
         function filterByStyle(style) {
             currentStyleFilter = style;
-            renderItems();
+            applyFiltersAndRender();
             closeAllDropdowns();
         }
 
         function applyFilters() {
             currentSearch = document.getElementById('searchInput').value.toLowerCase().trim();
-            renderItems();
+            applyFiltersAndRender();
         }
 
         function resetFilters() {
@@ -379,7 +455,7 @@
             currentSortField = 'level';
             currentSortDir = 'asc';
             document.getElementById('searchInput').value = '';
-            renderItems();
+            applyFiltersAndRender();
             closeAllDropdowns();
         }
 
