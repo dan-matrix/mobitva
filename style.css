@@ -566,6 +566,13 @@ body{padding:10px;}
 .pagination-dots{font-size:12px;}
 }
 
+@media (max-width: 600px){
+.faction-selector{gap:10px;}
+.faction-btn{padding:6px 15px;font-size:12px;}
+.nav-current-name{font-size:18px;}
+.nav-connection-icon{font-size:28px;}
+.nav-connection-name{font-size:14px;}
+}
 @media (max-width: 480px){
 .button-grid{grid-template-columns:1fr;}
 .items-table tbody{grid-template-columns:1fr;}
@@ -593,3 +600,86 @@ body{padding:10px;}
 }
 /* ===== ДЛЯ МОДАЛЬНЫХ ЗАГОЛОВКОВ ===== */
 .demon-modal-title,.demon-modal-subtitle,.rune-modal-title,.rune-modal-subtitle,.circle-stat-line span{text-transform:capitalize;}
+
+/* ==================== СТРАНИЦА КАРТЫ ==================== */
+.map-container{padding:20px;}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;}
+.map-location{background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid rgba(199,186,0,0.3);border-radius:20px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;}
+.map-location:hover{transform:translateY(-5px);border-color:#c7ba00;box-shadow:0 10px 25px rgba(199,186,0,0.3);}
+.map-location.locked{opacity:0.6;filter:grayscale(0.3);cursor:not-allowed;}
+.map-location.locked:hover{transform:none;border-color:rgba(199,186,0,0.3);}
+.map-location-icon{font-size:48px;margin-bottom:10px;}
+.map-location-name{font-size:16px;font-weight:bold;color:#ffdd88;margin-bottom:5px;}
+.map-location-lock{font-size:11px;color:#ff8888;margin-top:8px;}
+.map-location.safe{border-left:4px solid #44ff88;}
+.map-location.danger{border-left:4px solid #ff4444;}
+.map-location.boss{border-left:4px solid #ff44aa;}
+.map-location.secret{border-left:4px solid #44aaff;}
+.map-location.pvp{border-left:4px solid #ffaa44;}
+.map-location.magic{border-left:4px solid #aa44ff;}
+
+/* ==================== НАВИГАТОР (КАРТА) ==================== */
+.faction-selector{display:flex;justify-content:center;gap:20px;margin-bottom:25px;}
+.faction-btn{background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid rgba(199,186,0,0.4);border-radius:40px;padding:10px 25px;color:#e8dcc0;font-weight:bold;cursor:pointer;transition:0.3s;}
+.faction-btn.blue:hover,.faction-btn.blue.active{background:#44aaff;color:#0d0a07;border-color:#ffaa44;}
+.faction-btn.red:hover,.faction-btn.red.active{background:#ff4444;color:#0d0a07;border-color:#ffaa44;}
+.nav-container{background:linear-gradient(145deg,#1a1612,#12100e);border-radius:24px;border:1px solid rgba(199,186,0,0.3);padding:25px;}
+.nav-current-location{text-align:center;padding:20px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:25px;}
+.nav-current-icon{font-size:48px;}
+.nav-current-name{font-size:24px;font-weight:bold;color:#ffdd88;margin:10px 0;}
+.nav-current-level{font-size:14px;color:#c7ba00;}
+.nav-connections{display:flex;flex-direction:column;gap:12px;margin-bottom:30px;}
+.nav-connection{display:flex;align-items:center;gap:15px;padding:15px;background:rgba(0,0,0,0.3);border-radius:16px;cursor:pointer;transition:0.3s;border:1px solid rgba(199,186,0,0.2);}
+.nav-connection:hover{background:#2a2420;transform:translateX(5px);border-color:#c7ba00;}
+.nav-connection.locked{opacity:0.5;cursor:not-allowed;}
+.nav-connection.locked:hover{transform:none;}
+.nav-connection-icon{font-size:36px;}
+.nav-connection-info{flex:1;}
+.nav-connection-name{font-size:16px;font-weight:bold;color:#e8dcc0;}
+.nav-connection-type{font-size:11px;color:#c7ba00;}
+.nav-connection-lock{font-size:10px;color:#ff8888;margin-top:4px;}
+.nav-connection-arrow{font-size:24px;color:#c7ba00;}
+.nav-history{background:rgba(0,0,0,0.3);border-radius:16px;padding:15px;}
+.nav-history-title{font-size:14px;color:#c7ba00;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(199,186,0,0.3);}
+.nav-history-list{display:flex;flex-wrap:wrap;gap:8px;}
+.nav-history-item{padding:5px 12px;background:rgba(0,0,0,0.3);border-radius:20px;font-size:12px;cursor:pointer;transition:0.2s;}
+.nav-history-item:hover{background:#c7ba00;color:#0d0a07;}
+.location-faction{text-align:center;padding:10px;border-radius:12px;margin-top:10px;font-weight:bold;}
+.location-faction.blue{background:rgba(68,170,255,0.2);color:#88aaff;}
+.location-faction.red{background:rgba(255,68,68,0.2);color:#ff8888;}
+.location-faction.neutral{background:rgba(199,186,0,0.2);color:#ffdd88;}
+/* ==================== УНИВЕРСАЛЬНЫЕ ИКОНКИ ИЗ ICONS.PNG ==================== */
+.icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0) * -28px) calc(var(--row,0) * -28px);display:inline-block;vertical-align:middle;}
+
+/* ==================== ТИПЫ ЛОКАЦИЙ НА КАРТЕ ==================== */
+.location-node.safe{box-shadow:0 0 15px rgba(68,255,136,0.3);}
+.location-node.market{box-shadow:0 0 15px rgba(199,186,0,0.3);}
+.location-node.danger{box-shadow:0 0 15px rgba(255,68,68,0.3);animation:pulseRed 2s infinite;}
+@keyframes pulseRed{0%,100%{box-shadow:0 0 15px rgba(255,68,68,0.3);}50%{box-shadow:0 0 25px rgba(255,68,68,0.6);}}
+
+/* ==================== МОДАЛКА ЛОКАЦИИ ==================== */
+.location-modal{display:none;position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;backdrop-filter:blur(4px);}
+.location-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;width:400px;max-width:90%;animation:modalFadeIn 0.2s ease;position:relative;margin:auto;}
+.location-modal-content.safe{border-top:4px solid #44ff88;}
+.location-modal-content.market{border-top:4px solid #c7ba00;}
+.location-modal-content.danger{border-top:4px solid #ff4444;}
+.location-modal-header{background:linear-gradient(135deg,#2a2420,#1a1612);padding:20px;border-radius:22px 22px 0 0;border-bottom:2px solid #c7ba00;text-align:center;position:relative;}
+.location-modal-close{position:absolute;top:12px;right:18px;font-size:26px;cursor:pointer;color:#c7ba00;transition:0.2s;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
+.location-modal-close:hover{background:rgba(255,68,68,0.3);color:#ff4444;}
+.location-modal-title{font-size:20px;font-weight:bold;color:#ffdd88;margin-top:8px;}
+.location-modal-type{font-size:11px;color:#c7ba00;margin-top:5px;}
+.location-modal-body{padding:20px;}
+.location-modal-description{background:rgba(0,0,0,0.3);border-radius:14px;padding:12px;margin-bottom:15px;font-size:13px;color:#c0c0c0;line-height:1.4;}
+.location-mobs-section{margin-top:15px;}
+.location-mobs-title{font-size:12px;color:#c7ba00;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid rgba(199,186,0,0.2);}
+.location-mobs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
+.location-mob-card{background:rgba(0,0,0,0.3);border-radius:12px;padding:8px;text-align:center;cursor:pointer;transition:0.2s;border:1px solid rgba(199,186,0,0.1);}
+.location-mob-card:hover{background:#2a2420;border-color:#c7ba00;transform:translateY(-2px);}
+.location-mob-name{font-size:11px;font-weight:bold;color:#ffdd88;margin-top:4px;}
+.location-mob-level{font-size:9px;color:#c7ba00;}
+.location-mobs-empty{text-align:center;padding:20px;color:#a0a0a0;font-size:12px;}
+.location-modal-footer{padding:15px 20px 20px;text-align:center;}
+.location-modal-btn{background:linear-gradient(145deg,#2a2420,#1f1b17);border:1px solid #c7ba00;border-radius:40px;padding:8px 25px;color:#c7ba00;cursor:pointer;transition:0.2s;font-weight:bold;}
+.location-modal-btn:hover{background:#c7ba00;color:#0d0a07;}
+
+@keyframes modalFadeIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
