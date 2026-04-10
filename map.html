@@ -7,21 +7,37 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        .map-editor-container{background:linear-gradient(145deg,#1a1612,#12100e);border-radius:24px;border:1px solid rgba(199,186,0,0.3);padding:20px;position:relative;}
-        .map-canvas-wrapper{overflow:auto;background:#0d0a07;border-radius:16px;height:600px;position:relative;cursor:grab;user-select:none;}
+        .wrapper{max-width:1750px;margin:0 auto;padding:20px;background:linear-gradient(145deg,#1a1612,#12100e);border-radius:20px;border:1px solid rgba(199,186,0,0.3);box-shadow:0 0 30px rgba(199,186,0,0.1);}
+        /* ==================== КОМПАКТНЫЕ ШАПКИ ==================== */
+        .top-bar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px;flex-wrap:wrap;}
+        .top-bar .admin-panel{flex:1;margin-bottom:0;padding:6px 15px;}
+        .top-bar .header-wrapper{flex:2;margin-bottom:0;padding:6px 15px;}
+        .top-bar .admin-panel .admin-info{gap:10px;}
+        .top-bar .admin-panel .admin-avatar{font-size:20px;}
+        .top-bar .admin-panel .admin-name{font-size:12px;}
+        .top-bar .admin-panel .admin-badge{padding:2px 8px;font-size:9px;}
+        .top-bar .admin-panel .admin-btn{padding:4px 10px;font-size:11px;}
+        .top-bar .header-wrapper .site-title{font-size:20px;}
+        .top-bar .header-wrapper a{padding:4px 10px;font-size:11px;}
+        
+        /* ==================== УВЕЛИЧЕННОЕ ПОЛЕ КАРТЫ ==================== */
+        .map-editor-container{background:linear-gradient(145deg,#1a1612,#12100e);border-radius:24px;border:1px solid rgba(199,186,0,0.3);padding:15px;position:relative;}
+        .map-canvas-wrapper{overflow:auto;background:#0d0a07;border-radius:16px;height:70vh;min-height:850px;position:relative;cursor:grab;user-select:none;}
         .map-canvas-wrapper.dragging{cursor:grabbing;}
-        #mapCanvas{position:relative;width:2000px;height:1500px;background-image:radial-gradient(rgba(199,186,0,0.1) 1px,transparent 1px);background-size:40px 40px;}
+        #mapCanvas{position:relative;width:2000px;height:1700px;background-image:radial-gradient(rgba(199,186,0,0.1) 1px,transparent 1px);background-size:40px 40px;}
+        
+        /* Остальные стили без изменений */
         .location-node{position:absolute;width:100px;height:100px;background:#2a2420;border:3px solid #c7ba00;border-radius:50%;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.2s;z-index:10;box-shadow:0 0 15px rgba(0,0,0,0.5);}
         .location-node.editable{cursor:move;}
         .location-node:hover{transform:scale(1.05);border-color:#ffaa44;box-shadow:0 0 20px rgba(199,186,0,0.5);}
         .location-node.dragging{opacity:0.8;z-index:1000;transition:none;}
         .location-name{font-size:11px;font-weight:bold;color:#ffdd88;text-align:center;margin-top:6px;padding:0 5px;}
-        .editor-panel{margin-top:20px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;padding:15px;background:#2a2420;border-radius:16px;}
-        .editor-panel button,.editor-panel select{background:#1a1612;border:1px solid #c7ba00;border-radius:8px;padding:8px 16px;color:#e8dcc0;cursor:pointer;transition:0.2s;}
+        .editor-panel{margin-top:15px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:12px;background:#2a2420;border-radius:16px;}
+        .editor-panel button,.editor-panel select{background:#1a1612;border:1px solid #c7ba00;border-radius:8px;padding:6px 12px;color:#e8dcc0;cursor:pointer;transition:0.2s;}
         .editor-panel button:hover{background:#c7ba00;color:#0d0a07;}
         .editor-panel .admin-only{display:none;}
         .editor-panel.admin-mode .admin-only{display:inline-block;}
-        .status-bar{font-size:12px;color:#c7ba00;margin-left:auto;}
+        .status-bar{font-size:11px;color:#c7ba00;margin-left:auto;}
         .icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0) * -28px) calc(var(--row,0) * -28px);display:inline-block;vertical-align:middle;}
         
         .choice-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:350px;max-width:90%;text-align:center;}
@@ -42,10 +58,10 @@
         .modal-buttons{display:flex;gap:15px;justify-content:center;margin-top:20px;}
         .modal-buttons button{padding:10px 20px;}
         
-        .zoom-controls{position:absolute;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:100;}
-        .zoom-btn{width:40px;height:40px;background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid #c7ba00;border-radius:12px;color:#c7ba00;font-size:24px;font-weight:bold;cursor:pointer;transition:0.2s;display:flex;align-items:center;justify-content:center;}
+        .zoom-controls{position:absolute;bottom:15px;right:15px;display:flex;flex-direction:column;gap:6px;z-index:100;}
+        .zoom-btn{width:36px;height:36px;background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid #c7ba00;border-radius:10px;color:#c7ba00;font-size:20px;font-weight:bold;cursor:pointer;transition:0.2s;display:flex;align-items:center;justify-content:center;}
         .zoom-btn:hover{background:#c7ba00;color:#0d0a07;transform:scale(1.05);}
-        .zoom-level{position:absolute;bottom:90px;right:20px;background:rgba(0,0,0,0.7);padding:4px 10px;border-radius:20px;font-size:12px;color:#c7ba00;z-index:100;}
+        .zoom-level{position:absolute;bottom:70px;right:15px;background:rgba(0,0,0,0.7);padding:3px 8px;border-radius:16px;font-size:11px;color:#c7ba00;z-index:100;}
         
         .location-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;width:400px;max-width:90%;animation:modalFadeIn 0.2s ease;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;}
         .location-modal-header{background:linear-gradient(135deg,#2a2420,#1a1612);padding:20px;border-radius:22px 22px 0 0;border-bottom:2px solid #c7ba00;text-align:center;position:relative;}
@@ -69,16 +85,49 @@
         .edit-location-btn{background:#44aaff;border-color:#44aaff;color:#fff;margin-left:10px;}
         .edit-location-btn:hover{background:#88ccff;}
         @keyframes modalFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.9);}to{opacity:1;transform:translate(-50%,-50%) scale(1);}}
-        @media (max-width:768px){.location-node{width:80px;height:80px;}.location-name{font-size:9px;}}
+        @media (max-width:768px){.location-node{width:80px;height:80px;}.location-name{font-size:9px;}.top-bar{flex-direction:column;}.map-canvas-wrapper{height:50vh;}}
     </style>
 </head>
 <body>
 <div class="wrapper">
-    <div id="adminPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👑</div><div><div class="admin-name" id="adminName"></div><div class="admin-role">Администратор</div></div><div class="admin-badge">ADMIN</div></div><div class="admin-actions"><button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
-    <div id="userPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👤</div><div><div class="admin-name" id="userName"></div><div class="admin-role">Пользователь</div></div></div><div class="admin-actions"><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
-
-    <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a><div class="site-title">🗺️ КАРТА MMOБИТВЫ 🗺️</div><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a></div>
-    <div class="categories"><button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button><button class="cat-btn" onclick="location.reload()">🔄 Обновить</button></div>
+    <!-- Компактные шапки в один ряд -->
+    <div class="top-bar">
+        <div id="adminPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👑</div>
+                    <div><div class="admin-name" id="adminName"></div><div class="admin-role">Администратор</div></div>
+                    <div class="admin-badge">ADMIN</div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button>
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+        <div id="userPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👤</div>
+                    <div><div class="admin-name" id="userName"></div><div class="admin-role">Пользователь</div></div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="header-wrapper">
+            <a href="https://mobitva.net" target="_blank">mobitva.net</a>
+            <div class="site-title">🗺️ КАРТА MMOБИТВЫ 🗺️</div>
+            <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
+        </div>
+    </div>
+    
+    <div class="categories">
+        <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
+        <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
+    </div>
 
     <div class="map-editor-container">
         <div class="map-canvas-wrapper" id="canvasWrapper">

@@ -12,9 +12,13 @@ let mapDragStartX = 0, mapDragStartY = 0;
 let mapScrollLeft = 0, mapScrollTop = 0;
 
 let currentZoom = 1;
-const minZoom = 0.5;
-const maxZoom = 2;
-const zoomStep = 0.1;
+const minZoom = 0.25;
+const maxZoom = 1.5;
+const zoomStep = 0.035;
+
+// РАЗМЕРЫ КАНВАСА
+const CANVAS_WIDTH = 6000;
+const CANVAS_HEIGHT = 4500;
 
 async function loadMapData() {
     mapLocations = await getMapLocations();
@@ -29,9 +33,9 @@ function renderMap() {
     if(!canvas) return;
     canvas.innerHTML = '';
     
-    // Размер канваса НЕ меняется при зуме
-    canvas.style.width = '2000px';
-    canvas.style.height = '1500px';
+    // Размер канваса увеличили
+    canvas.style.width = (CANVAS_WIDTH * currentZoom) + 'px';
+    canvas.style.height = (CANVAS_HEIGHT * currentZoom) + 'px';
     
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -82,8 +86,8 @@ function renderMap() {
         if(editMode) node.classList.add('editable');
         node.style.left = (loc.x * currentZoom) + 'px';
         node.style.top = (loc.y * currentZoom) + 'px';
-        node.style.width = (100 * currentZoom) + 'px';
-        node.style.height = (100 * currentZoom) + 'px';
+        node.style.width = '100px';
+        node.style.height = '100px';
         node.setAttribute('data-id', loc.id);
         
         let borderColor = '#44ff88';
@@ -98,13 +102,9 @@ function renderMap() {
         node.style.borderColor = borderColor;
         node.classList.add(typeClass);
         
-        const iconSize = 28 * currentZoom;
-        const iconMargin = 4 * currentZoom;
-        const nameSize = 11 * currentZoom;
-        
         node.innerHTML = `
-            <div class="icon-from-icons" style="--row:${loc.icon_row || 3}; --col:${loc.icon_col || 10}; width:${iconSize}px; height:${iconSize}px; margin-bottom:${iconMargin}px;"></div>
-            <div class="location-name" style="font-size:${nameSize}px;">${escapeHtml(loc.name)}</div>
+            <div class="icon-from-icons" style="--row:${loc.icon_row || 3}; --col:${loc.icon_col || 10}; width:28px; height:28px; margin-bottom:4px;"></div>
+            <div class="location-name" style="font-size:11px;">${escapeHtml(loc.name)}</div>
         `;
         
         if(editMode) {
@@ -246,8 +246,22 @@ function initZoom() {
         if(newZoom > maxZoom) newZoom = maxZoom;
         if(newZoom === currentZoom) return;
         
+        // Сохраняем центр видимой области
+        const wrapper = document.getElementById('canvasWrapper');
+        const centerX = wrapper.scrollLeft + wrapper.clientWidth / 2;
+        const centerY = wrapper.scrollTop + wrapper.clientHeight / 2;
+        const ratioX = centerX / wrapper.scrollWidth;
+        const ratioY = centerY / wrapper.scrollHeight;
+        
         currentZoom = newZoom;
         renderMap();
+        
+        // Восстанавливаем позицию скролла относительно центра
+        const newScrollWidth = wrapper.scrollWidth;
+        const newScrollHeight = wrapper.scrollHeight;
+        wrapper.scrollLeft = ratioX * newScrollWidth - wrapper.clientWidth / 2;
+        wrapper.scrollTop = ratioY * newScrollHeight - wrapper.clientHeight / 2;
+        
         updateZoomLevel();
     }
     
@@ -285,9 +299,9 @@ function onDrag(e) {
     let newX = (e.clientX - wrapperRect.left + document.getElementById('canvasWrapper').scrollLeft) / currentZoom - dragOffsetX;
     let newY = (e.clientY - wrapperRect.top + document.getElementById('canvasWrapper').scrollTop) / currentZoom - dragOffsetY;
     
-    const canvas = document.getElementById('mapCanvas');
-    const maxX = 2000 - 100;
-    const maxY = 1500 - 100;
+    // Новые границы с учетом увеличенного канваса
+    const maxX = CANVAS_WIDTH - 100;
+    const maxY = CANVAS_HEIGHT - 100;
     newX = Math.max(0, Math.min(newX, maxX));
     newY = Math.max(0, Math.min(newY, maxY));
     
@@ -483,6 +497,75 @@ function toggleEditMode() {
     renderMap();
 }
 
+// ==================== ЦЕНТРИРОВАНИЕ КАРТЫ НА ЛОКАЦИИ ====================
+function centerMapOnLocation(locationIdOrName) {
+    // Ищем локацию по ID (число) или по названию (строка)
+    let loc = null;
+    if(typeof locationIdOrName === 'number') {
+        loc = mapLocations.find(l => l.id === locationIdOrName);
+    } else {
+        loc = mapLocations.find(l => l.name.toLowerCase() === locationIdOrName.toLowerCase());
+    }
+    
+    if(!loc) {
+        console.log('❌ Локация не найдена:', locationIdOrName);
+        return false;
+    }
+    
+    const wrapper = document.getElementById('canvasWrapper');
+    if(!wrapper) return false;
+    
+    // Получаем позицию локации с учетом текущего зума
+    const targetX = (loc.x + 50) * currentZoom;
+    const targetY = (loc.y + 50) * currentZoom;
+    
+    // Центрируем
+    wrapper.scrollLeft = targetX - wrapper.clientWidth / 2;
+    wrapper.scrollTop = targetY - wrapper.clientHeight / 2;
+    
+    console.log(`✅ Карта центрирована на: ${loc.name} (ID: ${loc.id}, координаты: ${loc.x}, ${loc.y})`);
+    return true;
+}
+
+function centerMapFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const locationParam = urlParams.get('location');
+    const locationName = urlParams.get('name');
+    const locationId = urlParams.get('id');
+    
+    let targetLocation = null;
+    
+    if(locationParam) {
+        const id = parseInt(locationParam);
+        if(!isNaN(id)) targetLocation = mapLocations.find(l => l.id === id);
+    }
+    if(!targetLocation && locationId) {
+        const id = parseInt(locationId);
+        if(!isNaN(id)) targetLocation = mapLocations.find(l => l.id === id);
+    }
+    if(!targetLocation && locationName) {
+        targetLocation = mapLocations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
+    }
+    
+    if(targetLocation) {
+        setTimeout(() => {
+            centerMapOnLocation(targetLocation.id);
+        }, 150);
+        return true;
+    }
+    
+    // Если не нашли и есть локации - центрируем на первую (например, Ярмарка)
+    if(mapLocations.length > 0) {
+        // Ищем Ярмарку или первую локацию
+        const defaultLoc = mapLocations.find(l => l.name.includes('Ярмарка')) || mapLocations[0];
+        setTimeout(() => {
+            centerMapOnLocation(defaultLoc.id);
+        }, 150);
+    }
+    
+    return false;
+}
+
 // ==================== АДМИНСКИЕ ФУНКЦИИ ====================
 function openChoiceModal() {
     if(!editMode) return;
@@ -534,8 +617,8 @@ async function saveNewLocation() {
         const firstCheckedId = parseInt(checkboxes[0].value);
         const nearestLoc = mapLocations.find(l => l.id === firstCheckedId);
         if(nearestLoc) {
-            targetX = nearestLoc.x + 150;
-            targetY = nearestLoc.y + 50;
+            targetX = nearestLoc.x + 250;
+            targetY = nearestLoc.y + 150;
         }
     }
     
@@ -658,6 +741,18 @@ async function initMap() {
             alert('Пикер иконок не загружен');
         }
     });
+    
+    // Центрируем карту на локации из URL или на Стагороде по умолчанию
+    const centered = centerMapFromUrl();
+    if(!centered && mapLocations.length > 0) {
+        // Если в URL ничего не указано - центрируем на Стагороде (или первой локации)
+        const starogorod = mapLocations.find(l => l.name.toLowerCase().includes('стагород'));
+        if(starogorod) {
+            setTimeout(() => {
+                centerMapOnLocation(starogorod.id);
+            }, 200);
+        }
+    }
 }
 
 initMap();
