@@ -19,8 +19,17 @@
         <div class="categories">
             <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
             <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
+            <button class="cat-btn" id="historyBtn">📜 ИСТОРИЯ ТАЙМЕРОВ</button>
         </div>
-        <div class="profile-container" id="profile-container"></div>
+        
+        <button class="toggle-timers-btn" id="toggleTimersBtn">⏰ ПОКАЗАТЬ ТАЙМЕРЫ</button>
+        
+        <div class="characters-container" id="charactersContainer">
+            <div class="profile-container" id="profile-container"></div>
+            <div style="margin-top:20px; text-align:center;">
+                <button class="add-character-btn" onclick="openAddCharModal()">➕ ДОБАВИТЬ ПЕРСОНАЖА</button>
+            </div>
+        </div>
 
         <div style="margin-top:20px; text-align:center;">
             <button class="change-password-btn" onclick="openChangePasswordModal()">🔑 Сменить пароль</button>
@@ -45,6 +54,10 @@
             <h2>✏️ РЕДАКТИРОВАТЬ ПЕРСОНАЖА</h2>
             <input type="hidden" id="editCharId">
             <input type="text" id="editCharName" placeholder="Введите новое имя персонажа">
+            <div class="form-group">
+                <label>🎨 Цветовая схема</label>
+                <div class="color-scheme-selector" id="colorSchemeSelector"></div>
+            </div>
             <div class="modal-buttons">
                 <button class="modal-save-btn" onclick="saveEditCharacterHandler()">💾 СОХРАНИТЬ</button>
                 <button class="modal-cancel-btn" onclick="closeEditCharModal()">❌ ОТМЕНА</button>
@@ -94,6 +107,13 @@
             <input type="hidden" id="currentCharacterId">
             <input type="hidden" id="currentTimerId">
 
+            <div class="quick-templates">
+                <button type="button" class="quick-template-btn" onclick="setQuickTemplate(1,0,0)">⚡ 1 час</button>
+                <button type="button" class="quick-template-btn" onclick="setQuickTemplate(0,24,0)">📅 1 день</button>
+                <button type="button" class="quick-template-btn" onclick="setQuickTemplate(0,168,0)">🗓️ 1 неделя</button>
+                <button type="button" class="quick-template-btn" onclick="setQuickTemplate(0,0,30)">⏰ 30 минут</button>
+            </div>
+
             <div class="form-group">
                 <label>📝 НАЗВАНИЕ КВЕСТА / ЗАДАНИЯ</label>
                 <input type="text" id="questName" placeholder="Пример: Зачистка подземелья">
@@ -108,7 +128,7 @@
                     </div>
                     <div class="time-field">
                         <label>ЧАСЫ</label>
-                        <input type="number" id="timerHours" min="0" max="23" value="0" placeholder="0">
+                        <input type="number" id="timerHours" min="0" max="999" value="0" placeholder="0">
                     </div>
                     <div class="time-field">
                         <label>МИНУТЫ</label>
@@ -117,9 +137,49 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label>📝 ЗАМЕТКИ</label>
+                <textarea id="timerNotes" rows="3" placeholder="Дополнительные заметки по заданию..."></textarea>
+            </div>
+
             <div class="modal-buttons">
                 <button class="modal-save-btn" onclick="saveTimerHandler()">💾 СОХРАНИТЬ</button>
                 <button class="modal-cancel-btn" onclick="closeTimerModal()">❌ ОТМЕНА</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка истории -->
+    <div id="historyModal" class="modal" style="display:none;">
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h2>📜 ИСТОРИЯ ТАЙМЕРОВ</h2>
+                <div class="history-modal-close" onclick="closeHistoryModal()">✕</div>
+            </div>
+            <div class="history-filters">
+                <select id="historyCharacterFilter">
+                    <option value="all">👥 Все персонажи</option>
+                </select>
+                <input type="text" id="historySearch" placeholder="🔍 Поиск по названию...">
+                <button class="history-export-btn" id="exportHistoryBtn">📥 Экспорт в CSV</button>
+                <button class="history-clear-btn" id="clearHistoryBtn">🗑️ Очистить историю</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+            <div class="modal-buttons">
+                <button class="cat-btn" style="margin: 10px" onclick="closeHistoryModal()">❌ ЗАКРЫТЬ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка редактирования заметки -->
+    <div id="editHistoryNoteModal" class="modal" style="display:none;">
+        <div class="edit-note-modal">
+            <h2>✏️ РЕДАКТИРОВАТЬ ЗАМЕТКУ</h2>
+            <input type="hidden" id="editHistoryId">
+            <textarea id="editHistoryNote" rows="4" placeholder="Введите заметку..."></textarea>
+            <div class="modal-buttons">
+                <button class="modal-save-btn" onclick="saveHistoryNote()">💾 СОХРАНИТЬ</button>
+                <button class="modal-cancel-btn" onclick="closeEditHistoryNoteModal()">❌ ОТМЕНА</button>
             </div>
         </div>
     </div>
@@ -133,8 +193,33 @@
         let characters = [];
         let timersCache = {};
         let timerUpdateInterval = null;
+        let isTimersVisible = false;
 
         const avatarList = ['👤', '😀', '😎', '🥷', '🧙', '🦸', '🐉', '⚔️', '🛡️', '🏹', '🔮', '💀', '👑', '⭐', '🔥', '❄️', '🌊', '🌿', '⚡', '🌈'];
+        
+        const colorSchemes = [
+            { id: 'gold', name: '🥇 Золотой', color: '#ffaa44' },
+            { id: 'silver', name: '🥈 Серебряный', color: '#c0c0c0' },
+            { id: 'bronze', name: '🥉 Бронзовый', color: '#cd7f32' },
+            { id: 'green', name: '🌿 Зеленый', color: '#44ff88' },
+            { id: 'red', name: '🔴 Красный', color: '#ff4444' },
+            { id: 'blue', name: '🔵 Синий', color: '#44aaff' },
+            { id: 'purple', name: '🟣 Фиолетовый', color: '#ff44aa' }
+        ];
+
+        // ==================== СОХРАНЕНИЕ ФЛАГОВ ИСТОРИИ ====================
+        function saveHistoryFlags() {
+            const flags = {};
+            for (const char of characters) {
+                const timers = timersCache[char.id] || [];
+                for (const timer of timers) {
+                    if (timer.historyRecorded) {
+                        flags[timer.id] = true;
+                    }
+                }
+            }
+            localStorage.setItem('timerHistoryFlags', JSON.stringify(flags));
+        }
 
         async function loadCharacters() {
             characters = await getUserCharacters(currentUser.login);
@@ -143,14 +228,25 @@
         }
 
         async function loadAllTimers() {
+            const savedFlags = JSON.parse(localStorage.getItem('timerHistoryFlags') || '{}');
+            
             const promises = characters.map(async char => {
-                timersCache[char.id] = await getCharacterTimers(char.id);
+                const timers = await getCharacterTimers(char.id);
+                timersCache[char.id] = timers.map(t => ({
+                    ...t,
+                    historyRecorded: savedFlags[t.id] || false
+                }));
             });
             await Promise.all(promises);
         }
 
         async function refreshTimersForCharacter(charId) {
-            timersCache[charId] = await getCharacterTimers(charId);
+            const timers = await getCharacterTimers(charId);
+            const savedFlags = JSON.parse(localStorage.getItem('timerHistoryFlags') || '{}');
+            timersCache[charId] = timers.map(t => ({
+                ...t,
+                historyRecorded: savedFlags[t.id] || false
+            }));
             renderProfile();
         }
 
@@ -166,6 +262,11 @@
             if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}м`);
             parts.push(`${seconds}с`);
             return parts.join(' ');
+        }
+
+        function formatDateTime(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
         }
 
         function calculateProgress(endTime, duration) {
@@ -184,6 +285,7 @@
             let html = '';
             for (const char of characters) {
                 const timers = timersCache[char.id] || [];
+                const colorScheme = char.color_scheme || 'gold';
 
                 let timersHtml = '';
                 if (timers.length > 0) {
@@ -192,11 +294,6 @@
                         const isActive = timer.is_active && remaining > 0;
                         const timeStr = formatTime(remaining);
                         const progressPercent = calculateProgress(timer.end_time, timer.duration);
-
-                        if (remaining <= 0 && timer.is_active) {
-                            timer.is_active = false;
-                            db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
-                        }
 
                         timersHtml += `
                             <div class="timer-item" data-timer-id="${timer.id}" data-character-id="${char.id}">
@@ -215,7 +312,7 @@
                                 <div class="timer-actions">
                                     <button class="timer-btn" onclick="event.stopPropagation(); editTimerHandler(${char.id}, ${timer.id})">✏️ РЕДАКТИРОВАТЬ</button>
                                     <button class="timer-btn" onclick="event.stopPropagation(); deleteTimerHandler(${char.id}, ${timer.id})">🗑️ УДАЛИТЬ</button>
-                                    ${!isActive && remaining <= 0 ? `<button class="timer-btn" onclick="event.stopPropagation(); restartTimerHandler(${char.id}, ${timer.id})">🔄 РЕСТАРТ</button>` : ''}
+                                    <button class="timer-btn" onclick="event.stopPropagation(); restartTimerHandler(${char.id}, ${timer.id})">🔄 РЕСТАРТ</button>
                                 </div>
                             </div>
                         `;
@@ -225,12 +322,13 @@
                 }
 
                 html += `
-                    <div class="character-card">
+                    <div class="character-card" data-scheme="${colorScheme}" data-char-id="${char.id}">
                         <div class="character-header">
                             <button class="refresh-all-btn" onclick="refreshAllTimers(${char.id})">🔄 Обновить все</button>
                             <div class="character-name">
                                 <span class="character-avatar" onclick="openAvatarModal(${char.id})">${char.avatar || '👤'}</span>
                                 ${escapeHtml(char.name)}
+                                <button class="edit-char-scheme-btn" onclick="openEditCharModal(${char.id}, '${escapeHtml(char.name)}')" style="background:none; border:none; cursor:pointer; font-size:14px;"></button>
                             </div>
                             <div style="display:flex; gap:8px;">
                                 <button class="edit-char-btn" onclick="openEditCharModal(${char.id}, '${escapeHtml(char.name)}')">✏️</button>
@@ -245,8 +343,6 @@
                 `;
             }
 
-            html += `<button class="add-character-btn" onclick="openAddCharModal()">➕ ДОБАВИТЬ ПЕРСОНАЖА</button>`;
-
             container.innerHTML = html;
             initTimerClickHandler();
             startTimerUpdates();
@@ -255,41 +351,71 @@
         function startTimerUpdates() {
             if (timerUpdateInterval) clearInterval(timerUpdateInterval);
 
-            timerUpdateInterval = setInterval(() => {
+            timerUpdateInterval = setInterval(async () => {
+                if (!isTimersVisible) return;
+                
                 const container = document.getElementById('profile-container');
                 if (!container) return;
 
-                document.querySelectorAll('.timer-item').forEach(timerElement => {
-                    const timerId = parseInt(timerElement.dataset.timerId);
-                    const charId = parseInt(timerElement.dataset.characterId);
+                let needsUpdate = false;
 
-                    const timers = timersCache[charId] || [];
-                    const timer = timers.find(t => t.id === timerId);
-
-                    if (timer) {
+                for (const char of characters) {
+                    const timers = timersCache[char.id] || [];
+                    for (const timer of timers) {
                         const remaining = timer.end_time - Date.now();
-                        const isActive = timer.is_active && remaining > 0;
-                        const timeStr = formatTime(remaining);
-                        const progressPercent = calculateProgress(timer.end_time, timer.duration);
-
-                        const timeSpan = timerElement.querySelector('.timer-time');
-                        if (timeSpan) timeSpan.textContent = timeStr;
-
-                        const progressBar = timerElement.querySelector('.timer-progress-bar');
-                        if (progressBar) progressBar.style.width = `${progressPercent}%`;
-
-                        if (remaining <= 0 && timer.is_active) {
-                            timer.is_active = false;
+                        const timerElement = container.querySelector(`.timer-item[data-timer-id="${timer.id}"]`);
+                        
+                        if (timerElement) {
+                            const timeSpan = timerElement.querySelector('.timer-time');
+                            const progressBar = timerElement.querySelector('.timer-progress-bar');
                             const statusSpan = timerElement.querySelector('.timer-status');
-                            if (statusSpan) {
-                                statusSpan.textContent = 'ЗАВЕРШЁН';
-                                statusSpan.classList.remove('active');
-                                statusSpan.classList.add('inactive');
+                            
+                            if (timeSpan) timeSpan.textContent = formatTime(remaining);
+                            if (progressBar) progressBar.style.width = `${calculateProgress(timer.end_time, timer.duration)}%`;
+                            
+                            // Записываем в историю ТОЛЬКО если таймер только что завершился и еще не записан
+                            if (remaining <= 0 && timer.is_active && !timer.historyRecorded) {
+                                timer.historyRecorded = true;
+                                timer.is_active = false;
+                                needsUpdate = true;
+                                
+                                if (statusSpan) {
+                                    statusSpan.textContent = 'ЗАВЕРШЁН';
+                                    statusSpan.classList.remove('active');
+                                    statusSpan.classList.add('inactive');
+                                }
+                                
+                                await addTimerHistory({
+                                    timer_id: timer.id,
+                                    character_id: char.id,
+                                    quest_name: timer.quest_name,
+                                    start_time: new Date(timer.end_time - timer.duration).toISOString(),
+                                    end_time: new Date(timer.end_time).toISOString(),
+                                    duration: timer.duration,
+                                    notes: timer.notes || ''
+                                });
+                                saveHistoryFlags();
+                                
+                                await db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
                             }
-                            db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
                         }
                     }
-                });
+                }
+                
+                if (needsUpdate) {
+                    for (const char of characters) {
+                        const freshTimers = await getCharacterTimers(char.id);
+                        const cachedTimers = timersCache[char.id] || [];
+                        timersCache[char.id] = freshTimers.map(ft => {
+                            const oldTimer = cachedTimers.find(ot => ot.id === ft.id);
+                            return {
+                                ...ft,
+                                historyRecorded: oldTimer ? oldTimer.historyRecorded : false
+                            };
+                        });
+                    }
+                    renderProfile();
+                }
             }, 1000);
         }
 
@@ -308,6 +434,173 @@
             this.classList.toggle('expanded');
         }
 
+        // ==================== ПОКАЗ/СКРЫТИЕ ТАЙМЕРОВ ====================
+        function toggleTimers() {
+            const container = document.getElementById('charactersContainer');
+            const btn = document.getElementById('toggleTimersBtn');
+            
+            isTimersVisible = !isTimersVisible;
+            
+            if (isTimersVisible) {
+                container.classList.add('show');
+                btn.textContent = '🙈 СКРЫТЬ ТАЙМЕРЫ';
+                if (document.getElementById('profile-container').innerHTML === '') {
+                    loadCharacters();
+                }
+            } else {
+                container.classList.remove('show');
+                btn.textContent = '⏰ ПОКАЗАТЬ ТАЙМЕРЫ';
+                setTimeout(() => {
+                    if (!isTimersVisible) {
+                        document.getElementById('profile-container').innerHTML = '';
+                    }
+                }, 1600);
+            }
+        }
+
+        // ==================== ИСТОРИЯ ТАЙМЕРОВ ====================
+        async function openHistoryModal() {
+            const history = await getTimerHistory();
+            const select = document.getElementById('historyCharacterFilter');
+            
+            select.innerHTML = '<option value="all">👥 Все персонажи</option>';
+            for (const char of characters) {
+                select.innerHTML += `<option value="${char.id}">🎮 ${escapeHtml(char.name)}</option>`;
+            }
+            
+            renderHistoryList(history);
+            document.getElementById('historyModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        
+        async function renderHistoryList(history) {
+            const container = document.getElementById('historyList');
+            const filterChar = document.getElementById('historyCharacterFilter').value;
+            const searchTerm = document.getElementById('historySearch').value.toLowerCase().trim();
+            
+            let filtered = [...history];
+            
+            if (filterChar !== 'all') {
+                filtered = filtered.filter(h => h.character_id == filterChar);
+            }
+            
+            if (searchTerm) {
+                filtered = filtered.filter(h => h.quest_name.toLowerCase().includes(searchTerm));
+            }
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="history-empty">📭 Нет записей в истории</div>';
+                return;
+            }
+            
+            let html = '';
+            for (const item of filtered) {
+                const char = characters.find(c => c.id === item.character_id);
+                const charName = char ? char.name : 'Неизвестный';
+                const startTime = formatDateTime(new Date(item.start_time).getTime());
+                const endTime = formatDateTime(new Date(item.end_time).getTime());
+                const durationFormatted = formatTime(item.duration);
+                
+                html += `
+                    <div class="history-item" data-id="${item.id}">
+                        <div class="history-header">
+                            <span class="history-quest">📌 ${escapeHtml(item.quest_name)}</span>
+                            <span class="history-character">🎮 ${escapeHtml(charName)}</span>
+                        </div>
+                        <div class="history-time">
+                            <span>▶️ Старт: ${startTime}</span>
+                            <span>⏹️ Финиш: ${endTime}</span>
+                            <span>⏱️ Длительность: ${durationFormatted}</span>
+                        </div>
+                        <div class="history-notes">
+                            <span class="history-notes-label">📝 Заметки:</span>
+                            <span class="history-notes-text">${escapeHtml(item.notes || '—')}</span>
+                            <button class="history-edit-note-btn" onclick="editHistoryNote(${item.id}, '${escapeHtml(item.notes || '').replace(/'/g, "\\'")}')">✏️</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+        
+        async function filterHistory() {
+            const history = await getTimerHistory();
+            renderHistoryList(history);
+        }
+        
+        function editHistoryNote(id, currentNote) {
+            document.getElementById('editHistoryId').value = id;
+            document.getElementById('editHistoryNote').value = currentNote;
+            document.getElementById('editHistoryNoteModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeEditHistoryNoteModal() {
+            document.getElementById('editHistoryNoteModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        
+        async function saveHistoryNote() {
+            const id = parseInt(document.getElementById('editHistoryId').value);
+            const note = document.getElementById('editHistoryNote').value.trim();
+            await updateTimerHistoryNote(id, note);
+            closeEditHistoryNoteModal();
+            filterHistory();
+            alert('✅ Заметка сохранена!');
+        }
+        
+        async function exportHistoryToCSV() {
+            const history = await getTimerHistory();
+            const filterChar = document.getElementById('historyCharacterFilter').value;
+            let filtered = [...history];
+            
+            if (filterChar !== 'all') {
+                filtered = filtered.filter(h => h.character_id == filterChar);
+            }
+            
+            if (filtered.length === 0) {
+                alert('Нет данных для экспорта!');
+                return;
+            }
+            
+            let csv = '"ID","Персонаж","Задание","Дата старта","Дата финиша","Длительность (мс)","Заметки"\n';
+            for (const item of filtered) {
+                const char = characters.find(c => c.id === item.character_id);
+                const charName = char ? char.name : 'Неизвестный';
+                csv += `"${item.id}","${charName}","${item.quest_name}","${item.start_time}","${item.end_time}","${item.duration}","${(item.notes || '').replace(/"/g, '""')}"\n`;
+            }
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', 'timer_history.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        async function clearHistory() {
+            if (!confirm('🗑️ Удалить ВСЮ историю таймеров? Это действие необратимо!')) return;
+            await clearTimerHistory();
+            filterHistory();
+            alert('✅ История очищена!');
+        }
+
+        // ==================== БЫСТРЫЕ ШАБЛОНЫ ====================
+        function setQuickTemplate(hours, totalHours, minutes) {
+            document.getElementById('timerDays').value = 0;
+            document.getElementById('timerHours').value = totalHours > 0 ? totalHours : hours;
+            document.getElementById('timerMinutes').value = minutes;
+        }
+
+        // ==================== УПРАВЛЕНИЕ ПЕРСОНАЖАМИ ====================
         function openAddCharModal() { document.getElementById('addCharModal').style.display = 'flex'; }
         function closeAddCharModal() { document.getElementById('addCharModal').style.display = 'none'; document.getElementById('charName').value = ''; }
 
@@ -316,20 +609,34 @@
             if (!name) { alert('Введите имя персонажа!'); return; }
             await addCharacter(currentUser.login, name);
             closeAddCharModal();
-            await loadCharacters();
+            if (isTimersVisible) await loadCharacters();
         }
 
         async function deleteCharacterHandler(id) {
             if (confirm('Удалить персонажа и все его таймеры?')) {
                 await deleteCharacter(id);
                 delete timersCache[id];
-                await loadCharacters();
+                if (isTimersVisible) await loadCharacters();
             }
         }
 
         function openEditCharModal(charId, charName) {
+            const char = characters.find(c => c.id === charId);
             document.getElementById('editCharId').value = charId;
             document.getElementById('editCharName').value = charName;
+            
+            const selector = document.getElementById('colorSchemeSelector');
+            let schemeHtml = '';
+            for (const scheme of colorSchemes) {
+                const isSelected = (char?.color_scheme || 'gold') === scheme.id;
+                schemeHtml += `
+                    <div class="color-option" style="background:${scheme.color}; ${isSelected ? 'border-color:#ffaa44; box-shadow:0 0 8px #ffaa44;' : ''}" 
+                         onclick="selectColorScheme('${scheme.id}')" title="${scheme.name}"></div>
+                `;
+            }
+            selector.innerHTML = schemeHtml;
+            window.selectedColorScheme = char?.color_scheme || 'gold';
+            
             document.getElementById('editCharModal').style.display = 'flex';
         }
 
@@ -337,27 +644,57 @@
             document.getElementById('editCharModal').style.display = 'none';
             document.getElementById('editCharName').value = '';
         }
+        
+        function selectColorScheme(schemeId) {
+            window.selectedColorScheme = schemeId;
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.style.borderColor = '#3a342a';
+                opt.style.boxShadow = 'none';
+            });
+            const selectedOpt = Array.from(document.querySelectorAll('.color-option')).find(opt => {
+                const bg = opt.style.background;
+                if (schemeId === 'gold') return bg.includes('#ffaa44');
+                if (schemeId === 'silver') return bg.includes('#c0c0c0');
+                if (schemeId === 'bronze') return bg.includes('#cd7f32');
+                if (schemeId === 'green') return bg.includes('#44ff88');
+                if (schemeId === 'red') return bg.includes('#ff4444');
+                if (schemeId === 'blue') return bg.includes('#44aaff');
+                if (schemeId === 'purple') return bg.includes('#ff44aa');
+                return false;
+            });
+            if (selectedOpt) {
+                selectedOpt.style.borderColor = '#ffaa44';
+                selectedOpt.style.boxShadow = '0 0 8px #ffaa44';
+            }
+        }
 
         async function saveEditCharacterHandler() {
             const charId = parseInt(document.getElementById('editCharId').value);
             const newName = document.getElementById('editCharName').value.trim();
+            const newScheme = window.selectedColorScheme || 'gold';
 
             if (!newName) {
                 alert('❌ Введите имя персонажа!');
                 return;
             }
 
-            const { error } = await db.from('user_characters').update({ name: newName }).eq('id', charId);
-            if (error) {
-                alert('❌ Ошибка при обновлении!');
+            const { error: nameError } = await db.from('user_characters').update({ name: newName }).eq('id', charId);
+            if (nameError) {
+                alert('❌ Ошибка при обновлении имени!');
                 return;
+            }
+            
+            const { error: schemeError } = await db.from('user_characters').update({ color_scheme: newScheme }).eq('id', charId);
+            if (schemeError) {
+                console.error('Ошибка обновления схемы:', schemeError);
             }
 
             closeEditCharModal();
-            await loadCharacters();
-            alert('✅ Имя персонажа обновлено!');
+            if (isTimersVisible) await loadCharacters();
+            alert('✅ Персонаж обновлен!');
         }
 
+        // ==================== АВАТАРКИ ====================
         function openAvatarModal(characterId) {
             document.getElementById('avatarCharacterId').value = characterId;
             const grid = document.getElementById('avatarGrid');
@@ -383,9 +720,10 @@
                 return;
             }
             closeAvatarModal();
-            await loadCharacters();
+            if (isTimersVisible) await loadCharacters();
         }
 
+        // ==================== СМЕНА ПАРОЛЯ ====================
         function openChangePasswordModal() {
             document.getElementById('changePasswordModal').style.display = 'flex';
         }
@@ -435,13 +773,15 @@
             closeChangePasswordModal();
         }
 
-        function openTimerModal(characterId, timerId = null, questName = '', days = 0, hours = 0, minutes = 0) {
+        // ==================== ТАЙМЕРЫ ====================
+        function openTimerModal(characterId, timerId = null, questName = '', days = 0, hours = 0, minutes = 0, notes = '') {
             document.getElementById('currentCharacterId').value = characterId;
             document.getElementById('currentTimerId').value = timerId || '';
             document.getElementById('questName').value = questName;
             document.getElementById('timerDays').value = days;
             document.getElementById('timerHours').value = hours;
             document.getElementById('timerMinutes').value = minutes;
+            document.getElementById('timerNotes').value = notes;
             document.getElementById('timerModalTitle').innerText = timerId ? '✏️ РЕДАКТИРОВАНИЕ ТАЙМЕРА' : '➕ НОВЫЙ ТАЙМЕР';
             document.getElementById('timerModal').style.display = 'flex';
         }
@@ -455,6 +795,7 @@
             const days = parseInt(document.getElementById('timerDays').value) || 0;
             const hours = parseInt(document.getElementById('timerHours').value) || 0;
             const minutes = parseInt(document.getElementById('timerMinutes').value) || 0;
+            const notes = document.getElementById('timerNotes').value.trim(); // ЗАМЕТКИ
 
             if (!questName) { alert('Введите название квеста!'); return; }
             const totalMs = (days * 24 * 60 * 60 * 1000) + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000);
@@ -462,12 +803,31 @@
             const endTime = Date.now() + totalMs;
 
             if (timerId) {
+                // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕГО ТАЙМЕРА
                 await updateTimer(parseInt(timerId), questName, endTime, totalMs);
+                await db.from('user_timers').update({ notes: notes }).eq('id', parseInt(timerId));
             } else {
-                await addTimer(characterId, questName, endTime, totalMs);
+                // НОВЫЙ ТАЙМЕР
+                const { data, error } = await db.from('user_timers').insert([
+                    { 
+                        character_id: characterId, 
+                        quest_name: questName, 
+                        end_time: endTime, 
+                        duration: totalMs,
+                        notes: notes,  // ЗАПИСЫВАЕМ ЗАМЕТКИ
+                        is_active: true 
+                    }
+                ]).select();
+                
+                if (error) {
+                    console.error('Ошибка создания таймера:', error);
+                    alert('❌ Ошибка при создании таймера!');
+                    return;
+                }
             }
+            
             closeTimerModal();
-            await refreshTimersForCharacter(characterId);
+            if (isTimersVisible) await refreshTimersForCharacter(characterId);
         }
 
         async function editTimerHandler(characterId, timerId) {
@@ -478,14 +838,14 @@
                 const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((remaining % (86400000)) / 3600000);
                 const minutes = Math.floor((remaining % 3600000) / 60000);
-                openTimerModal(characterId, timerId, timer.quest_name, Math.max(0, days), Math.max(0, hours), Math.max(0, minutes));
+                openTimerModal(characterId, timerId, timer.quest_name, Math.max(0, days), Math.max(0, hours), Math.max(0, minutes), timer.notes || '');
             }
         }
 
         async function deleteTimerHandler(characterId, timerId) {
             if (confirm('Удалить таймер?')) {
                 await deleteTimer(timerId);
-                await refreshTimersForCharacter(characterId);
+                if (isTimersVisible) await refreshTimersForCharacter(characterId);
             }
         }
 
@@ -495,8 +855,15 @@
             if (timer) {
                 const endTime = Date.now() + timer.duration;
                 await updateTimer(timerId, timer.quest_name, endTime, timer.duration);
-                await db.from('user_timers').update({ is_active: true }).eq('id', timerId);
-                await refreshTimersForCharacter(characterId);
+                // СОХРАНЯЕМ ЗАМЕТКИ ПРИ РЕСТАРТЕ
+                await db.from('user_timers').update({ 
+                    is_active: true, 
+                    notes: timer.notes || '' 
+                }).eq('id', timerId);
+                timer.historyRecorded = false;
+                timer.is_active = true;
+                saveHistoryFlags();
+                if (isTimersVisible) await refreshTimersForCharacter(characterId);
             }
         }
 
@@ -514,16 +881,24 @@
                 if (timer.duration > 0) {
                     const endTime = Date.now() + timer.duration;
                     await updateTimer(timer.id, timer.quest_name, endTime, timer.duration);
-                    await db.from('user_timers').update({ is_active: true }).eq('id', timer.id);
+                    await db.from('user_timers').update({ is_active: true, notes: timer.notes || '' }).eq('id', timer.id);
+                    timer.historyRecorded = false;
+                    timer.is_active = true;
                     refreshed++;
                 }
             }
-
+            saveHistoryFlags();
             alert(`✅ Перезапущено ${refreshed} таймеров!`);
-            await refreshTimersForCharacter(characterId);
+            if (isTimersVisible) await refreshTimersForCharacter(characterId);
         }
 
-        loadCharacters();
+        // ==================== ЗАПУСК ====================
+        document.getElementById('toggleTimersBtn')?.addEventListener('click', toggleTimers);
+        document.getElementById('historyBtn')?.addEventListener('click', openHistoryModal);
+        document.getElementById('historyCharacterFilter')?.addEventListener('change', filterHistory);
+        document.getElementById('historySearch')?.addEventListener('input', filterHistory);
+        document.getElementById('exportHistoryBtn')?.addEventListener('click', exportHistoryToCSV);
+        document.getElementById('clearHistoryBtn')?.addEventListener('click', clearHistory);
     </script>
 </body>
 

@@ -603,3 +603,40 @@ function closeModal() {
 // Запуск
 loadTable('items');
 document.addEventListener('DOMContentLoaded', displayAdminPanel);
+
+// ==================== ПРЕДОТВРАЩАЕМ ОТПРАВКУ ПО ENTER В TEXTAREA ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Находим все textarea внутри модалки и добавляем обработчик
+    const modalFields = document.getElementById('modalFields');
+    if (modalFields) {
+        modalFields.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
+                // Если нажат Enter в textarea - ничего не делаем, просто новая строка
+                e.stopPropagation();
+                return true;
+            }
+        });
+    }
+    
+    // Также отлавливаем Enter на всей модалке, но только если не textarea
+    const editModal = document.getElementById('editModal');
+    if (editModal) {
+        editModal.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                // Если Enter нажат не в textarea - сохраняем
+                const saveBtn = document.querySelector('#editModal .modal-buttons .cat-btn:first-child');
+                if (saveBtn && saveBtn.onclick) {
+                    e.preventDefault();
+                    saveBtn.click();
+                }
+            }
+        });
+    }
+});
+
+// Блокируем отправку по Enter из textarea (глобальный перехват)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
+        e.stopPropagation();
+    }
+}, true);
