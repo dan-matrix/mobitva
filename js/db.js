@@ -4,40 +4,30 @@ let dbInitPromise = null;
 let db = null;
 
 async function ensureDb() {
-    // Если db уже инициализирован и готов
     if (db && dbReady) {
         return db;
     }
-    
-    // Если уже идет инициализация, ждем ее
     if (dbInitPromise) {
         return dbInitPromise;
     }
-    
-    // Запускаем инициализацию
     dbInitPromise = (async () => {
-        // Ждем загрузки Supabase
         while (typeof window.supabase === 'undefined') {
             await new Promise(r => setTimeout(r, 50));
         }
         while (typeof window.supabase.createClient === 'undefined') {
             await new Promise(r => setTimeout(r, 50));
         }
-        
         const SUPABASE_URL = 'https://gmcqxgxwtczjlwyifwew.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtY3F4Z3h3dGN6amx3eWlmd2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MjIxMTAsImV4cCI6MjA5MDk5ODExMH0.cM6xm9qCRbl-c1h-pWOWKSeAozYUy7KpJjua79JgFuk';
-        
         db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.__dbClient = db;
         dbReady = true;
         console.log('✅ Supabase инициализирован');
         return db;
     })();
-    
     return dbInitPromise;
 }
 
-// Запускаем инициализацию
 ensureDb();
 
 // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
@@ -114,6 +104,34 @@ async function getNakolki() { await ensureDb(); const { data, error } = await db
 async function saveNakolki(item) { await ensureDb(); const { data, error } = await db.from('nakolki').upsert(item).select(); if(error) return null; return data; }
 async function deleteNakolkiById(id) { await ensureDb(); const { error } = await db.from('nakolki').delete().eq('id', id); return !error; }
 async function getNakolkiById(id) { await ensureDb(); const { data, error } = await db.from('nakolki').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
+
+// ========== УСИЛЕНИЯ (ENHANCEMENTS) ==========
+async function getEnhancements() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('enhancements').select('*').order('sort_order'); 
+    if (error) return []; 
+    return data; 
+}
+
+async function getEnhancementById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('enhancements').select('*').eq('id', id); 
+    if (error) return null; 
+    return data ? data[0] : null; 
+}
+
+async function saveEnhancement(item) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('enhancements').upsert(item).select(); 
+    if (error) return null; 
+    return data; 
+}
+
+async function deleteEnhancementById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('enhancements').delete().eq('id', id); 
+    return !error; 
+}
 
 // ========== ЛИЧНЫЙ КАБИНЕТ (ПЕРСОНАЖИ И ТАЙМЕРЫ) ==========
 async function getUserCharacters(userId) { await ensureDb(); const { data, error } = await db.from('user_characters').select('*').eq('user_id', userId); if(error) return []; return data; }
@@ -215,6 +233,7 @@ async function deleteLocationMobsByLocationId(locationId) {
     const { error } = await db.from('location_mobs').delete().eq('location_id', locationId); 
     return !error; 
 }
+
 // ========== ИСТОРИЯ ТАЙМЕРОВ ==========
 async function addTimerHistory(historyItem) {
     await ensureDb();

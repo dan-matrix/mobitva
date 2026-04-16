@@ -7,6 +7,7 @@ if (!user || user.role !== 'admin') {
 
 let currentType = null, currentId = null, currentPickerCallback = null;
 let allItemsData = [];
+let allEnhancementsAdmin = [];
 
 // ==================== ЗАГРУЗКА ТАБЛИЦ ====================
 document.querySelectorAll('.admin-tab').forEach(tab => {
@@ -35,6 +36,10 @@ async function loadTable(type) {
     if (type === 'nakolki') renderNakolki(await getNakolki());
     if (type === 'news') renderNews(await getNews());
     if (type === 'users') renderUsers(await getUsers());
+    if (type === 'enhancements') {
+        allEnhancementsAdmin = await getEnhancements();
+        renderEnhancements(allEnhancementsAdmin);
+    }
 }
 
 // ==================== ПОИСК В АДМИНКЕ ====================
@@ -185,6 +190,47 @@ function renderUsers(data) {
     tbody.innerHTML = html;
 }
 
+// ==================== УСИЛЕНИЯ (ENHANCEMENTS) ====================
+function renderEnhancements(data) {
+    const tbody = document.getElementById('enhancementsList');
+    if (!tbody) return;
+    let html = '';
+    for (const d of data) {
+        const typeText = d.type === 'temporary' ? '⏳ Временное' : '♾️ Постоянное';
+        html += `<tr>
+            <td>${d.id}</td>
+            <td><div class="shop-icon" style="--row:${d.icon_row}; --col:${d.icon_col}; width:80px; height:80px;"></div></td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${typeText}</td>
+            <td>${escapeHtml(d.expiry_text || '—')}</td>
+            <td>${d.level}</td>
+            <td><button class="edit-btn" onclick="openModal('enhancements',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('enhancements',${d.id})">🗑️</button></td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+    
+    const searchInput = document.getElementById('searchEnhancementsAdmin');
+    if (searchInput && !searchInput.hasListener) {
+        searchInput.addEventListener('input', () => filterEnhancementsAdmin());
+        searchInput.hasListener = true;
+    }
+}
+
+function filterEnhancementsAdmin() {
+    const searchTerm = document.getElementById('searchEnhancementsAdmin').value.toLowerCase().trim();
+    if (!searchTerm) {
+        renderEnhancements(allEnhancementsAdmin);
+        return;
+    }
+    const filtered = allEnhancementsAdmin.filter(e => e.name.toLowerCase().includes(searchTerm));
+    renderEnhancements(filtered);
+}
+
+function clearEnhancementsSearch() {
+    document.getElementById('searchEnhancementsAdmin').value = '';
+    renderEnhancements(allEnhancementsAdmin);
+}
+
 // ==================== УДАЛЕНИЕ ====================
 async function deleteRow(type, id) {
     if (confirm('Удалить?')) {
@@ -195,6 +241,7 @@ async function deleteRow(type, id) {
         if (type === 'druids') await deleteDruidsRuneById(id);
         if (type === 'nakolki') await deleteNakolkiById(id);
         if (type === 'news') await deleteNewsById(id);
+        if (type === 'enhancements') await deleteEnhancementById(id);
         loadTable(type);
     }
 }
@@ -263,6 +310,7 @@ async function openModal(type, id = null) {
         if (type === 'druids') data = await getDruidsRuneById(id);
         if (type === 'nakolki') data = await getNakolkiById(id);
         if (type === 'news') data = await getNewsById(id);
+        if (type === 'enhancements') data = await getEnhancementById(id);
     }
     let html = '';
 
@@ -286,7 +334,6 @@ async function openModal(type, id = null) {
         <button type="button" class="add-stat-btn" onclick="addUniqueField()">➕ Добавить уникальную характеристику</button>`;
         container.innerHTML = html;
 
-        // Проверка дубликатов
         const nameInput = document.getElementById('itemName');
         const typeSelectEl = document.getElementById('itemType');
         const saveBtn = document.querySelector('.modal-buttons .cat-btn:first-child');
@@ -382,6 +429,26 @@ async function openModal(type, id = null) {
             }
         }
         if (nameInput) nameInput.addEventListener('input', checkGenericDuplicate);
+    }
+    else if (type === 'enhancements') {
+        const typeOptions = [
+            {value: 'temporary', label: '⏳ Временное'},
+            {value: 'permanent', label: '♾️ Постоянное'}
+        ];
+        let typeSelect = '<select id="enhType" class="form-control">';
+        for (let opt of typeOptions) {
+            const selected = (data && data.type === opt.value) ? 'selected' : '';
+            typeSelect += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+        }
+        typeSelect += '</select>';
+        
+        html = `<div class="form-row"><div class="form-group"><label>📝 Название</label><input type="text" id="itemName" value="${data ? escapeHtml(data.name) : ''}"></div></div>
+        <div class="form-row"><div class="form-group"><label>📌 Тип</label>${typeSelect}</div><div class="form-group"><label>⭐ Уровень</label><input type="number" id="itemLevel" value="${data ? data.level : 1}"></div></div>
+        <div class="form-row"><div class="form-group"><label>📅 Годность (текст)</label><input type="text" id="expiryText" value="${data ? escapeHtml(data.expiry_text || '') : ''}" placeholder="Например: 2 часа, 1 день, ∞"></div></div>
+        <div class="form-group"><button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('iconRow').value=r; document.getElementById('iconCol').value=c; document.getElementById('iconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button><div id="iconPreview" class="icon-preview">${data ? `Текущая: ряд ${data.icon_row + 1}, колонка ${data.icon_col + 1}` : '❌ Не выбрано'}</div><input type="hidden" id="iconRow" value="${data ? data.icon_row : 0}"><input type="hidden" id="iconCol" value="${data ? data.icon_col : 0}"></div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3" placeholder="Описание...">${data ? escapeHtml(data.description || '') : ''}</textarea></div>`;
+        container.innerHTML = html;
     }
     else if (type === 'news') {
         const categoryOptions = ['default', 'update', 'event', 'patch'];
@@ -589,9 +656,29 @@ async function saveData() {
         };
         if (currentId) item.id = currentId; await saveNewsItem(item);
     }
+    else if (currentType === 'enhancements') {
+        const itemName = document.getElementById('itemName').value.trim();
+        if (!itemName) { alert('❌ Введите название!'); return; }
+        item = {
+            name: itemName,
+            type: document.getElementById('enhType').value,
+            level: parseInt(document.getElementById('itemLevel').value) || 1,
+            icon_row: parseInt(document.getElementById('iconRow').value),
+            icon_col: parseInt(document.getElementById('iconCol').value),
+            stats: collectStats('default'),
+            description: document.getElementById('description')?.value.trim() || '',
+            expiry_text: document.getElementById('expiryText')?.value.trim() || ''
+        };
+        if (currentId) item.id = currentId;
+        await saveEnhancement(item);
+    }
 
     closeModal();
     loadTable(currentType);
+    if (currentType === 'enhancements') {
+        allEnhancementsAdmin = await getEnhancements();
+        renderEnhancements(allEnhancementsAdmin);
+    }
     alert('✅ Сохранено!');
 }
 
@@ -606,24 +693,20 @@ document.addEventListener('DOMContentLoaded', displayAdminPanel);
 
 // ==================== ПРЕДОТВРАЩАЕМ ОТПРАВКУ ПО ENTER В TEXTAREA ====================
 document.addEventListener('DOMContentLoaded', function() {
-    // Находим все textarea внутри модалки и добавляем обработчик
     const modalFields = document.getElementById('modalFields');
     if (modalFields) {
         modalFields.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
-                // Если нажат Enter в textarea - ничего не делаем, просто новая строка
                 e.stopPropagation();
                 return true;
             }
         });
     }
     
-    // Также отлавливаем Enter на всей модалке, но только если не textarea
     const editModal = document.getElementById('editModal');
     if (editModal) {
         editModal.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-                // Если Enter нажат не в textarea - сохраняем
                 const saveBtn = document.querySelector('#editModal .modal-buttons .cat-btn:first-child');
                 if (saveBtn && saveBtn.onclick) {
                     e.preventDefault();
@@ -634,7 +717,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Блокируем отправку по Enter из textarea (глобальный перехват)
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
         e.stopPropagation();

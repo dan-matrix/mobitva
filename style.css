@@ -496,7 +496,25 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 .global-search-empty{text-align:center;padding:30px;color:#a0a0a0;font-size:12px;}
 .global-search-empty::before{content:"🔍";display:block;font-size:32px;margin-bottom:10px;opacity:0.5;}
 
-
+/* ==================== УСИЛЕНИЯ ==================== */
+.enhancements-container{max-width:800px;margin:0 auto;}
+        .enhancement-list{display:flex;flex-direction:column;gap:12px;}
+        .enhancement-card{background:linear-gradient(145deg,#1e1a14,#14110d);border:1px solid rgba(199,186,0,0.25);border-radius:16px;padding:15px 20px;cursor:pointer;transition:all 0.2s ease;display:flex;align-items:center;gap:15px;}
+        .enhancement-card:hover{transform:translateX(5px);border-color:#c7ba00;background:#2a2420;}
+        .enhancement-icon{width:80px;height:80px;background-image:url('img/shop.png');background-repeat:no-repeat;background-position:calc(var(--col,0) * -80px) calc(var(--row,0) * -80px);flex-shrink:0;border-radius:8px;}        .enhancement-info{flex:1;}
+        .enhancement-name{font-size:16px;font-weight:bold;color:#ffdd88;}
+        .enhancement-level{font-size:11px;color:#c7ba00;margin-top:3px;}
+        .enhancement-expiry{font-size:10px;color:#ff8888;margin-top:2px;}
+        .enhancement-badge{background:rgba(199,186,0,0.2);border-radius:20px;padding:4px 12px;font-size:11px;white-space:nowrap;}
+        .enhancement-badge.temporary{background:rgba(255,68,68,0.2);color:#ff8888;border:1px solid rgba(255,68,68,0.3);}
+        .enhancement-badge.permanent{background:rgba(68,255,136,0.2);color:#88ffaa;border:1px solid rgba(68,255,136,0.3);}
+        .type-filter{display:flex;gap:12px;justify-content:center;margin-bottom:25px;}
+        .type-btn{background:#2a2420;border:1px solid #c7ba00;border-radius:30px;padding:8px 20px;color:#e8dcc0;cursor:pointer;transition:0.2s;}
+        .type-btn.active{background:#c7ba00;color:#0d0a07;}
+        .type-btn:hover{background:#c7ba00;color:#0d0a07;}
+        .search-bar-enh{display:flex;gap:10px;margin-bottom:20px;max-width:500px;margin-left:auto;margin-right:auto;}
+        .search-bar-enh input{flex:1;padding:10px;background:#0d0a07;border:1px solid #c7ba00;border-radius:30px;color:#e8dcc0;}
+        .result-count-enh{text-align:center;font-size:12px;color:#c7ba00;margin-bottom:15px;}
 
 /* ==================== ПАГИНАЦИЯ ==================== */
 .pagination-container{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:30px;flex-wrap:wrap;}
