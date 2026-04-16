@@ -204,6 +204,7 @@ function renderEnhancements(data) {
             <td>${typeText}</td>
             <td>${escapeHtml(d.expiry_text || '—')}</td>
             <td>${d.level}</td>
+            <td>${escapeHtml((d.how_to_get || '').substring(0, 30))}${(d.how_to_get || '').length > 30 ? '...' : ''}</td>
             <td><button class="edit-btn" onclick="openModal('enhancements',${d.id})">✏️</button><button class="delete-btn" onclick="deleteRow('enhancements',${d.id})">🗑️</button></td>
         </tr>`;
     }
@@ -447,7 +448,8 @@ async function openModal(type, id = null) {
         <div class="form-row"><div class="form-group"><label>📅 Годность (текст)</label><input type="text" id="expiryText" value="${data ? escapeHtml(data.expiry_text || '') : ''}" placeholder="Например: 2 часа, 1 день, ∞"></div></div>
         <div class="form-group"><button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('iconRow').value=r; document.getElementById('iconCol').value=c; document.getElementById('iconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button><div id="iconPreview" class="icon-preview">${data ? `Текущая: ряд ${data.icon_row + 1}, колонка ${data.icon_col + 1}` : '❌ Не выбрано'}</div><input type="hidden" id="iconRow" value="${data ? data.icon_row : 0}"><input type="hidden" id="iconCol" value="${data ? data.icon_col : 0}"></div>
         <div class="stats-grid" id="statsGrid"></div>
-        <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3" placeholder="Описание...">${data ? escapeHtml(data.description || '') : ''}</textarea></div>`;
+        <div class="form-group"><label>📝 Описание</label><textarea id="description" rows="3" placeholder="Описание усиления...">${data ? escapeHtml(data.description || '') : ''}</textarea></div>
+        <div class="form-group"><label>🎯 Способ получения</label><textarea id="howToGet" rows="2" placeholder="Где и как получить это усиление...">${data ? escapeHtml(data.how_to_get || '') : ''}</textarea></div>`;
         container.innerHTML = html;
     }
     else if (type === 'news') {
@@ -667,7 +669,8 @@ async function saveData() {
             icon_col: parseInt(document.getElementById('iconCol').value),
             stats: collectStats('default'),
             description: document.getElementById('description')?.value.trim() || '',
-            expiry_text: document.getElementById('expiryText')?.value.trim() || ''
+            expiry_text: document.getElementById('expiryText')?.value.trim() || '',
+            how_to_get: document.getElementById('howToGet')?.value.trim() || ''
         };
         if (currentId) item.id = currentId;
         await saveEnhancement(item);
