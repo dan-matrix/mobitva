@@ -237,7 +237,12 @@ async function deleteLocationMobsByLocationId(locationId) {
 // ========== ИСТОРИЯ ТАЙМЕРОВ ==========
 async function addTimerHistory(historyItem) {
     await ensureDb();
-    const { data, error } = await db.from('timer_history').insert(historyItem).select();
+    const user = checkAuth();
+    const itemWithUser = {
+        ...historyItem,
+        user_id: user ? user.login : null
+    };
+    const { data, error } = await db.from('timer_history').insert(itemWithUser).select();
     if (error) {
         console.error('addTimerHistory error:', error);
         return null;
@@ -247,7 +252,10 @@ async function addTimerHistory(historyItem) {
 
 async function getTimerHistory(characterId = null, limit = 100) {
     await ensureDb();
-    let query = db.from('timer_history').select('*').order('end_time', { ascending: false }).limit(limit);
+    const user = checkAuth();
+    if (!user) return [];
+    
+    let query = db.from('timer_history').select('*').eq('user_id', user.login).order('end_time', { ascending: false }).limit(limit);
     if (characterId) {
         query = query.eq('character_id', characterId);
     }
@@ -273,11 +281,12 @@ async function deleteTimerHistory(id) {
 
 async function clearTimerHistory(characterId = null) {
     await ensureDb();
-    let query = db.from('timer_history').delete();
+    const user = checkAuth();
+    if (!user) return false;
+    
+    let query = db.from('timer_history').delete().eq('user_id', user.login);
     if (characterId) {
         query = query.eq('character_id', characterId);
-    } else {
-        query = query.neq('id', 0);
     }
     const { error } = await query;
     return !error;
