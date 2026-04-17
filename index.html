@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Главная - Автобаттл MMO</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="img/books.png">
 </head>
 
 <body>
@@ -42,9 +43,10 @@
                 </div>
             </div>
         </div>
-        <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a>
-            <div class="site-title">⚔️ ГЛАВНОЕ МЕНЮ ⚔️</div><a href="https://mmobitva.ru"
-                target="_blank">mmobitva.ru</a>
+        <div class="header-wrapper">
+            <a href="https://mobitva.net" target="_blank">mobitva.net</a>
+            <div class="site-title">⚔️ ГЛАВНОЕ МЕНЮ ⚔️</div>
+            <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
         </div>
         <div class="button-grid">
             <button class="main-btn" onclick="location.href='main.html'">📦 Предметы<span>Просмотр и
@@ -55,9 +57,9 @@
                     силу</span></button>
             <button class="main-btn" onclick="location.href='totem.html'">🧪 Тотем клана<span>Улучшение</span></button>
             <button class="main-btn" onclick="openRunesModal()">✨ Руны<span>Изучай символы</span></button>
-            <button class="main-btn" onclick="alert('🚧 В разработке!')">🕵️ Секретные вещи<span>Редкие
-                    находки</span></button>
-            <button class="main-btn" onclick="location.href='enhancements.html'">✨ Усиления<span>Временные и постоянные</span></button>
+            <button class="main-btn" onclick="openSecretModal()">🔮 Секретные вещи<span>Редкие находки</span></button>
+            <button class="main-btn" onclick="location.href='enhancements.html'">✨ Усиления<span>Временные и
+                    постоянные</span></button>
             <button class="main-btn" onclick="location.href='map.html'">🗺️ Карта<span>Локации и охота</span></button>
             <button class="main-btn" onclick="location.href='news.html'">📰 Новости<span>История
                     новостей</span></button>
@@ -70,6 +72,8 @@
                     →</button></div>
         </div>
     </div>
+
+    <!-- Модалка выбора рун -->
     <div id="runesModal" class="runes-modal">
         <div class="runes-modal-content">
             <div class="runes-modal-title">✨ Руны</div>
@@ -93,11 +97,34 @@
             </div>
         </div>
     </div>
+
+    <!-- Модалка выбора секретных вещей -->
+    <div id="secretModal" class="runes-modal" style="display:none;">
+        <div class="runes-modal-content">
+            <div class="runes-modal-title">🔮 Секретные вещи</div>
+            <div class="runes-modal-subtitle">Выберите категорию</div>
+            <div class="runes-choices">
+                <div class="runes-choice-btn" onclick="location.href='secret_items.html'">
+                    <div class="runes-choice-icon">📦</div>
+                    <div class="runes-choice-name">Вещи</div>
+                </div>
+                <div class="runes-choice-btn" onclick="location.href='secret_sets.html'">
+                    <div class="runes-choice-icon">👘</div>
+                    <div class="runes-choice-name">Сеты</div>
+                </div>
+            </div>
+            <div>
+                <button class="runes-modal-close" onclick="closeSecretModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/db.js"></script>
     <script src="js/common.js"></script>
     <script>
         if (!checkAuth()) { window.location.href = 'auth.html'; }
+
         async function loadLatestNews() {
             const news = await getNews();
             const latest = news.slice(0, 2);
@@ -108,17 +135,31 @@
             let html = '';
             latest.forEach(i => {
                 html += `
-            <div class="latest-news-card">
-                <div class="latest-news-date">📅 ${new Date(i.date).toLocaleDateString('ru-RU')}</div>
-                <div class="latest-news-title">${escapeHtml(i.title)}</div>
-                <div class="latest-news-content">${escapeHtml(i.content.substring(0, 200))}${i.content.length > 200 ? '...' : ''}</div>
-                ${i.footer ? `<div class="latest-news-footer">${escapeHtml(i.footer)}</div>` : ''}
-            </div>
-        `;
+                    <div class="latest-news-card">
+                        <div class="latest-news-date">📅 ${new Date(i.date).toLocaleDateString('ru-RU')}</div>
+                        <div class="latest-news-title">${escapeHtml(i.title)}</div>
+                        <div class="latest-news-content">${escapeHtml(i.content.substring(0, 200))}${i.content.length > 200 ? '...' : ''}</div>
+                        ${i.footer ? `<div class="latest-news-footer">${escapeHtml(i.footer)}</div>` : ''}
+                    </div>
+                `;
             });
             c.innerHTML = html;
         }
-        document.addEventListener('DOMContentLoaded', function () { loadLatestNews(); displayAdminPanel(); });
+
+        function openSecretModal() {
+            document.getElementById('secretModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSecretModal() {
+            document.getElementById('secretModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadLatestNews();
+            displayAdminPanel();
+        });
     </script>
 </body>
 

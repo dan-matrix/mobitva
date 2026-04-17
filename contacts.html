@@ -1,19 +1,97 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Контакты - Автобаттл MMO</title><link rel="stylesheet" href="style.css"></head>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контакты - MMO</title>
+    <link rel="icon" type="image/png" href="img/books.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
 <body>
-<div class="wrapper">
-    <div id="adminPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👑</div><div><div class="admin-name" id="adminName"></div><div class="admin-role">Администратор</div></div><div class="admin-badge">ADMIN</div></div><div class="admin-actions"><button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
-    <div id="userPanel" style="display:none;"><div class="admin-panel"><div class="admin-info"><div class="admin-avatar">👤</div><div><div class="admin-name" id="userName"></div><div class="admin-role">Пользователь</div></div></div><div class="admin-actions"><button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button></div></div></div>
-    <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a><div class="site-title">📞 КОНТАКТЫ 📞</div><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a></div>
-    <div class="categories"><button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button></div>
-    <div class="contacts-container">
-        <div class="contacts-card"><div class="contacts-header"><h1>Связь с нами</h1><p>Мы всегда рады помочь</p></div><div class="contacts-body"><div class="contact-item"><div class="contact-icon">📧</div><div class="contact-info"><div class="contact-label">Email</div><div class="contact-value"><a href="mailto:support@mmobitva.ru">support@mmobitva.ru</a></div></div></div><div class="contact-item"><div class="contact-icon">💬</div><div class="contact-info"><div class="contact-label">Discord</div><div class="contact-value"><a href="#">discord.gg/mmobitva</a></div></div></div><div class="contact-item"><div class="contact-icon">📱</div><div class="contact-info"><div class="contact-label">Telegram</div><div class="contact-value"><a href="https://t.me/mmobitvaru">@mmobitvaru</a></div></div></div><div class="contact-item"><div class="contact-icon">🌐</div><div class="contact-info"><div class="contact-label">Сайт</div><div class="contact-value"><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a></div></div></div></div></div>
+    <div class="wrapper">
+        <div id="adminPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👑</div>
+                    <div>
+                        <div class="admin-name" id="adminName"></div>
+                        <div class="admin-role">Администратор</div>
+                    </div>
+                    <div class="admin-badge">ADMIN</div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
+                    <button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button>
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+        <div id="userPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👤</div>
+                    <div>
+                        <div class="admin-name" id="userName"></div>
+                        <div class="admin-role">Пользователь</div>
+                    </div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+        <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a>
+            <div class="site-title">📞 КОНТАКТЫ 📞</div><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
+        </div>
+        <div class="categories"><button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button></div>
+        <div class="contacts-container">
+            <div class="contacts-card">
+                <div class="contacts-header">
+                    <h1>Связь с нами</h1>
+                    <p>Мы всегда рады помочь</p>
+                </div>
+                <div class="contacts-body">
+                    <div class="contact-item">
+                        <div class="contact-icon">📧</div>
+                        <div class="contact-info">
+                            <div class="contact-label">Email</div>
+                            <div class="contact-value"><a href="mailto:support@mmobitva.ru">support@mmobitva.ru</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">💬</div>
+                        <div class="contact-info">
+                            <div class="contact-label">Discord</div>
+                            <div class="contact-value"><a href="#">discord.gg/mmobitva</a></div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">📱</div>
+                        <div class="contact-info">
+                            <div class="contact-label">Telegram</div>
+                            <div class="contact-value"><a href="https://t.me/mmobitvaru">@mmobitvaru</a></div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">🌐</div>
+                        <div class="contact-info">
+                            <div class="contact-label">Сайт</div>
+                            <div class="contact-value"><a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js"></script>
-<script src="js/common.js"></script>
-<script>if(!checkAuth()) { window.location.href = 'auth.html'; } document.addEventListener('DOMContentLoaded', displayAdminPanel);</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/db.js"></script>
+    <script src="js/common.js"></script>
+    <script>if (!checkAuth()) { window.location.href = 'auth.html'; } document.addEventListener('DOMContentLoaded', displayAdminPanel);</script>
 </body>
+
 </html>

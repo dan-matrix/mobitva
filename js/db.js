@@ -291,3 +291,103 @@ async function clearTimerHistory(characterId = null) {
     const { error } = await query;
     return !error;
 }
+
+// ==================== СЕКРЕТНЫЕ ВЕЩИ ====================
+async function getSecretItems() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_items_new').select('*').order('id'); 
+    if (error) return []; 
+    return data; 
+}
+
+async function getSecretItemById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_items_new').select('*').eq('id', id); 
+    if (error) return null; 
+    return data ? data[0] : null; 
+}
+
+async function saveSecretItem(item) { 
+    await ensureDb(); 
+    if (!item.id) {
+        delete item.id;
+    }
+    const { data, error } = await db.from('secret_items_new').upsert(item).select(); 
+    if (error) return null; 
+    return data; 
+}
+
+async function deleteSecretItem(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('secret_items_new').delete().eq('id', id); 
+    return !error; 
+}
+
+// ==================== СЕКРЕТНЫЕ СЕТЫ ====================
+async function getSecretSets() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_sets_new').select('*').order('id'); 
+    if (error) return []; 
+    return data; 
+}
+
+async function getSecretSetById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_sets_new').select('*').eq('id', id); 
+    if (error) return null; 
+    return data ? data[0] : null; 
+}
+
+async function saveSecretSet(set) { 
+    await ensureDb(); 
+    if (!set.id) {
+        delete set.id;
+    }
+    const { data, error } = await db.from('secret_sets_new').upsert(set).select(); 
+    if (error) return null; 
+    return data; 
+}
+
+async function deleteSecretSet(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('secret_sets_new').delete().eq('id', id); 
+    return !error; 
+}
+
+// ==================== ПРЕДМЕТЫ В СЕТАХ ====================
+async function getSecretSetItems(setId) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_set_items_new').select('*').eq('set_id', setId).order('id'); 
+    if (error) return []; 
+    return data; 
+}
+
+async function getSecretSetItemById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_set_items_new').select('*').eq('id', id); 
+    if (error) return null; 
+    return data ? data[0] : null; 
+}
+
+async function saveSecretSetItem(item) { 
+    await ensureDb(); 
+    if (!item.id) {
+        delete item.id;
+    }
+    const { data, error } = await db.from('secret_set_items_new').upsert(item).select(); 
+    if (error) return null; 
+    return data; 
+}
+
+async function deleteSecretSetItem(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('secret_set_items_new').delete().eq('id', id); 
+    return !error; 
+}
+
+async function getSecretSetItemsBySetId(setId) {
+    await ensureDb();
+    const { data, error } = await db.from('secret_set_items_new').select('*').eq('set_id', setId);
+    if (error) return [];
+    return data;
+}

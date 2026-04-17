@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-панель - Автобаттл MMO</title>
+    <title>Админ-панель - MMO</title>
+    <link rel="icon" type="image/png" href="img/books.png">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* все стили остаются без изменений */
         * {
             box-sizing: border-box;
         }
@@ -445,11 +445,13 @@
 
 <body>
     <div class="wrapper">
-        <div class="header-wrapper"><a href="https://mobitva.net" target="_blank">mobitva.net</a>
+        <div class="header-wrapper">
+            <a href="https://mobitva.net" target="_blank">mobitva.net</a>
             <div class="site-title">⚙️ АДМИН-ПАНЕЛЬ ⚙️</div>
             <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
         </div>
-        <div class="categories"><button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
+        <div class="categories">
+            <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
             <button class="cat-btn" onclick="logout()">🚪 Выйти</button>
             <button class="cat-btn" onclick="location.href='admin-map.html'">🗺️ Управление картой</button>
         </div>
@@ -464,6 +466,9 @@
             <div class="admin-tab" data-tab="enhancements">✨ Усиления</div>
             <div class="admin-tab" data-tab="news">📰 Новости</div>
             <div class="admin-tab" data-tab="users">👥 Пользователи</div>
+            <div class="admin-tab" data-tab="secret_items">🔮 Секретные вещи</div>
+            <div class="admin-tab" data-tab="secret_sets">👘 Секретные сеты</div>
+            <div class="admin-tab" data-tab="secret_set_items">📦 Предметы сетов</div>
         </div>
 
         <div id="itemsPanel" class="admin-panel-content active">
@@ -474,89 +479,52 @@
             </div>
             <table class="admin-table" id="itemsTable">
                 <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Тип</th>
-                        <th>Уровень</th>
-                        <th>Стиль</th>
-                        <th>Действия</th>
-                    </tr>
+                    <tr><th>ID</th><th>Название</th><th>Тип</th><th>Уровень</th><th>Стиль</th><th>Действия</th></tr>
                 </thead>
                 <tbody id="itemsList"></tbody>
             </table>
         </div>
-        <div id="demonsPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('demons')">➕
-                Добавить круг</button>
-            <table class="admin-table" id="demonsTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Уровень</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="demonsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('demons')">➕ Добавить круг</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Уровень</th><th>Действия</th></tr></thead>
                 <tbody id="demonsList"></tbody>
             </table>
         </div>
-        <div id="totemsPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('totems')">➕
-                Добавить тотем</button>
-            <table class="admin-table" id="totemsTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Уровень</th>
-                        <th>Треб.ур.</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="totemsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('totems')">➕ Добавить тотем</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Уровень</th><th>Треб.ур.</th><th>Действия</th></tr></thead>
                 <tbody id="totemsList"></tbody>
             </table>
         </div>
-        <div id="masterPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('master')">➕
-                Добавить руну</button>
-            <table class="admin-table" id="masterTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Уровень</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="masterPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('master')">➕ Добавить руну</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Уровень</th><th>Действия</th></tr></thead>
                 <tbody id="masterList"></tbody>
             </table>
         </div>
-        <div id="druidsPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('druids')">➕
-                Добавить руну</button>
-            <table class="admin-table" id="druidsTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Уровень</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="druidsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('druids')">➕ Добавить руну</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Уровень</th><th>Действия</th></tr></thead>
                 <tbody id="druidsList"></tbody>
             </table>
         </div>
-        <div id="nakolkiPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('nakolki')">➕
-                Добавить руну</button>
-            <table class="admin-table" id="nakolkiTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Название</th>
-                        <th>Уровень</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="nakolkiPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('nakolki')">➕ Добавить руну</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Уровень</th><th>Действия</th></tr></thead>
                 <tbody id="nakolkiList"></tbody>
             </table>
         </div>
+
         <div id="enhancementsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('enhancements')">➕ Добавить усиление</button>
             <div class="search-bar" style="margin-top:10px;">
@@ -568,32 +536,53 @@
                 <tbody id="enhancementsList"></tbody>
             </table>
         </div>
-        <div id="newsPanel" class="admin-panel-content"><button class="add-btn" onclick="openModal('news')">➕ Добавить
-                новость</button>
-            <table class="admin-table" id="newsTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Заголовок</th>
-                        <th>Дата</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+
+        <div id="newsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openModal('news')">➕ Добавить новость</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Заголовок</th><th>Дата</th><th>Действия</th></tr></thead>
                 <tbody id="newsList"></tbody>
             </table>
         </div>
+
         <div id="usersPanel" class="admin-panel-content">
-            <table class="admin-table" id="usersTable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Логин</th>
-                        <th>Email</th>
-                        <th>Роль</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Логин</th><th>Email</th><th>Роль</th><th>Действия</th></tr></thead>
                 <tbody id="usersList"></tbody>
+            </table>
+        </div>
+
+        <div id="secret_itemsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openSecretItemAdminModal()">➕ Добавить секретную вещь</button>
+            <div class="search-bar" style="margin-top:10px;">
+                <input type="text" id="searchSecretItemsAdmin" placeholder="🔍 Поиск по названию...">
+                <button class="cat-btn" onclick="clearSecretItemsSearch()">🔄 Сброс</button>
+            </div>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Иконка</th><th>Название</th><th>Тип</th><th>Годность</th><th>Уровень</th><th>Способ получения</th><th>Действия</th></tr></thead>
+                <tbody id="secretItemsList"></tbody>
+            </table>
+        </div>
+
+        <div id="secret_setsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openSetAdminModal()">➕ Добавить сет</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Название</th><th>Стиль</th><th>Уровень</th><th>Действия</th></tr></thead>
+                <tbody id="secretSetsList"></tbody>
+            </table>
+        </div>
+
+        <div id="secret_set_itemsPanel" class="admin-panel-content">
+            <div class="form-group" style="margin-bottom:15px;">
+                <label>🎯 Выберите сет:</label>
+                <select id="setFilterSelect" style="width:100%; padding:10px; background:#0d0a07; border:1px solid #c7ba00; border-radius:8px; color:#e8dcc0;">
+                    <option value="">-- Выберите сет --</option>
+                </select>
+            </div>
+            <button class="add-btn" onclick="openSetItemAdminModal(null, document.getElementById('setFilterSelect').value)">➕ Добавить предмет в сет</button>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Иконка</th><th>Название</th><th>Уровень</th><th>Уникальные</th><th>Действия</th></tr></thead>
+                <tbody id="secretSetItemsList"></tbody>
             </table>
         </div>
     </div>
@@ -602,16 +591,106 @@
         <div class="modal-content">
             <h2 id="modalTitle">Добавить</h2>
             <div id="modalFields"></div>
-            <div class="modal-buttons"><button class="cat-btn" onclick="saveData()">💾 Сохранить</button><button
-                    class="cat-btn" onclick="closeModal()">❌ Отмена</button></div>
+            <div class="modal-buttons">
+                <button class="cat-btn" onclick="saveData()">💾 Сохранить</button>
+                <button class="cat-btn" onclick="closeModal()">❌ Отмена</button>
+            </div>
         </div>
     </div>
+
     <div id="iconPicker" class="icon-picker-container" style="display:none;">
         <div class="icon-picker-header">
-            <h3>🎨 Выберите иконку</h3><button class="close-icon-picker"
-                onclick="document.getElementById('iconPicker').style.display='none'">✕ Закрыть</button>
+            <h3>🎨 Выберите иконку</h3>
+            <button class="close-icon-picker" onclick="document.getElementById('iconPicker').style.display='none'">✕ Закрыть</button>
         </div>
         <div id="iconPickerGrid" class="icon-grid-inner"></div>
+    </div>
+
+    <!-- Модалка секретной вещи -->
+    <div id="secretItemAdminModal" class="modal">
+        <div class="modal-content">
+            <h2>🔮 Секретная вещь</h2>
+            <div class="form-group"><label>📝 Название</label><input type="text" id="secretItemName"></div>
+            <div class="form-row">
+                <div class="form-group"><label>📌 Тип</label>
+                    <select id="secretItemType">
+                        <option value="temporary">⏳ Временное</option>
+                        <option value="permanent">♾️ Постоянное</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>⭐ Уровень</label><input type="number" id="secretItemLevel" value="1"></div>
+            </div>
+            <div class="form-group"><label>📅 Годность (текст)</label><input type="text" id="secretItemExpiryText" placeholder="Например: 2 часа, 1 день, ∞"></div>
+            <div class="form-group">
+                <button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('secretItemIconRow').value=r; document.getElementById('secretItemIconCol').value=c; document.getElementById('secretItemIconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button>
+                <div id="secretItemIconPreview" class="icon-preview">❌ Не выбрано</div>
+                <input type="hidden" id="secretItemIconRow" value="0"><input type="hidden" id="secretItemIconCol" value="0">
+            </div>
+            <div class="stats-grid" id="secretItemStatsGrid"></div>
+            <div class="form-group">
+                <label>✨ Уникальные характеристики</label>
+                <div id="secretUniqueContainer" class="unique-container"></div>
+                <button type="button" class="add-stat-btn" onclick="addSecretUniqueField()">➕ Добавить уникальную характеристику</button>
+            </div>
+            <div class="form-group"><label>📝 Описание</label><textarea id="secretItemDescription" rows="3"></textarea></div>
+            <div class="form-group"><label>🎯 Способ получения</label><textarea id="secretItemHowToGet" rows="2"></textarea></div>
+            <div class="modal-buttons"><button class="cat-btn" onclick="saveSecretItemAdmin()">💾 Сохранить</button><button class="cat-btn" onclick="closeSecretItemAdminModal()">❌ Отмена</button></div>
+        </div>
+    </div>
+
+    <!-- Модалка сета -->
+    <div id="setAdminModal" class="modal">
+        <div class="modal-content">
+            <h2>👘 Секретный сет</h2>
+            <div class="form-group"><label>📝 Название сета</label><input type="text" id="setNameAdmin"></div>
+            <div class="form-row">
+                <div class="form-group"><label>✨ Стиль</label>
+                    <select id="setStyleAdmin">
+                        <option value="">— Нет —</option>
+                        <option value="rare">Урон</option>
+                        <option value="uncommon">Уворот</option>
+                        <option value="armor">Броня</option>
+                        <option value="epic">Элита</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>⭐ Уровень</label><input type="number" id="setLevelAdmin" value="1"></div>
+            </div>
+            <div class="modal-buttons"><button class="cat-btn" onclick="saveSetAdmin()">💾 Сохранить</button><button class="cat-btn" onclick="closeSetAdminModal()">❌ Отмена</button></div>
+        </div>
+    </div>
+
+    <!-- Модалка предмета сета -->
+    <div id="setItemAdminModal" class="modal">
+        <div class="modal-content">
+            <h2>📦 Предмет сета</h2>
+            <div class="form-group"><label>📝 Название</label><input type="text" id="setItemName"></div>
+            <div class="form-row">
+                <div class="form-group"><label>✨ Стиль</label>
+                    <select id="setItemStyle">
+                        <option value="">— Нет —</option>
+                        <option value="rare">Урон</option>
+                        <option value="uncommon">Уворот</option>
+                        <option value="armor">Броня</option>
+                        <option value="epic">Элита</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>⭐ Уровень</label><input type="number" id="setItemLevel" value="1"></div>
+            </div>
+            <div class="form-group">
+                <button type="button" class="cat-btn" onclick="showIconPicker((r,c)=>{document.getElementById('setItemIconRow').value=r; document.getElementById('setItemIconCol').value=c; document.getElementById('setItemIconPreview').innerHTML='✅ Выбрано: ряд '+(r+1)+', колонка '+(c+1);}, this)">🎨 Выбрать иконку</button>
+                <div id="setItemIconPreview" class="icon-preview">❌ Не выбрано</div>
+                <input type="hidden" id="setItemIconRow" value="0"><input type="hidden" id="setItemIconCol" value="0">
+            </div>
+            <div class="stats-grid" id="setItemStatsGrid"></div>
+            <div class="form-group">
+                <label>✨ Уникальные характеристики</label>
+                <div id="setItemUniqueContainer" class="unique-container"></div>
+                <button type="button" class="add-stat-btn" onclick="addSetItemUniqueField()">➕ Добавить уникальную характеристику</button>
+            </div>
+            <div class="form-group"><label>📝 Описание</label><textarea id="setItemDescription" rows="3"></textarea></div>
+            <div class="form-group"><label>🎯 Способ получения</label><textarea id="setItemHowToGet" rows="2"></textarea></div>
+            <div class="modal-buttons"><button class="cat-btn" onclick="saveSetItemAdmin()">💾 Сохранить</button><button class="cat-btn" onclick="closeSetItemAdminModal()">❌ Отмена</button></div>
+        </div>
     </div>
 
     <script src="js/db.js"></script>

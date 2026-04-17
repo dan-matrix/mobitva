@@ -40,6 +40,20 @@ async function loadTable(type) {
         allEnhancementsAdmin = await getEnhancements();
         renderEnhancements(allEnhancementsAdmin);
     }
+    if (type === 'secret_items') {
+        await loadSecretItemsAdmin();
+        const searchInput = document.getElementById('searchSecretItemsAdmin');
+        if (searchInput && !searchInput.hasListener) {
+            searchInput.addEventListener('input', () => filterSecretItemsAdmin());
+            searchInput.hasListener = true;
+        }
+    }
+    if (type === 'secret_sets') {
+        await loadSecretSetsAdmin();
+    }
+    if (type === 'secret_set_items') {
+        await initSecretSetItemsPanel();
+    }
 }
 
 // ==================== ПОИСК В АДМИНКЕ ====================
@@ -316,7 +330,7 @@ async function openModal(type, id = null) {
     let html = '';
 
     if (type === 'items') {
-        const typeOptions = ['Оружие', 'Броня', 'Зелье', 'Свиток', 'Амулет', 'Кольцо', 'Разное'];
+        const typeOptions = ['Оружие', 'Щит', 'Броня', 'Зелье', 'Свиток', 'Амулет', 'Кольцо', 'Разное'];
         let typeSelect = '<select id="itemType" class="form-control">';
         for (let opt of typeOptions) { const selected = (data && data.type === opt) ? 'selected' : ''; typeSelect += `<option value="${opt}" ${selected}>${opt}</option>`; }
         typeSelect += '</select>';
@@ -688,6 +702,433 @@ async function saveData() {
 function closeModal() {
     document.getElementById('editModal').style.display = 'none';
     currentId = null;
+}
+
+// ==================== СЕКРЕТНЫЕ ВЕЩИ (АДМИНКА) ====================
+let allSecretItems = [];
+let currentSecretItemId = null;
+
+async function loadSecretItemsAdmin() {
+    allSecretItems = await getSecretItems();
+    renderSecretItemsAdmin(allSecretItems);
+}
+
+function renderSecretItemsAdmin(data) {
+    const tbody = document.getElementById('secretItemsList');
+    if (!tbody) return;
+    let html = '';
+    for (const d of data) {
+        const typeText = d.type === 'temporary' ? '⏳ Временное' : '♾️ Постоянное';
+        html += `<tr>
+            <td>${d.id}</td>
+            <td><div class="shop-icon" style="--row:${d.icon_row}; --col:${d.icon_col}; width:80px; height:80px;"></div></td>
+            <td>${escapeHtml(d.name)}</div></td>
+            <td>${typeText}</div></td>
+            <td>${escapeHtml(d.expiry_text || '—')}</div></td>
+            <td>${d.level}</div></td>
+            <td>${escapeHtml((d.how_to_get || '').substring(0, 30))}${(d.how_to_get || '').length > 30 ? '...' : ''}</div></td>
+            <td>
+                <button class="edit-btn" onclick="openSecretItemAdminModal(${d.id})">✏️</button>
+                <button class="delete-btn" onclick="deleteSecretItemAdmin(${d.id})">🗑️</button>
+            </div></td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+function filterSecretItemsAdmin() {
+    const searchTerm = document.getElementById('searchSecretItemsAdmin')?.value.toLowerCase().trim() || '';
+    if (!searchTerm) {
+        renderSecretItemsAdmin(allSecretItems);
+        return;
+    }
+    const filtered = allSecretItems.filter(e => e.name.toLowerCase().includes(searchTerm));
+    renderSecretItemsAdmin(filtered);
+}
+
+function clearSecretItemsSearch() {
+    const input = document.getElementById('searchSecretItemsAdmin');
+    if (input) input.value = '';
+    renderSecretItemsAdmin(allSecretItems);
+}
+
+function addSecretUniqueField(value = '') {
+    const container = document.getElementById('secretUniqueContainer');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'unique-row';
+    div.innerHTML = `<input type="text" class="secret-unique-value" value="${escapeHtml(value)}" placeholder="Уникальная характеристика"><button onclick="this.parentElement.remove()">🗑️</button>`;
+    container.appendChild(div);
+}
+
+function collectSecretUniqueStats() {
+    const unique = [];
+    document.querySelectorAll('#secretUniqueContainer .secret-unique-value').forEach(input => {
+        if (input.value.trim()) unique.push(input.value.trim());
+    });
+    return unique;
+}
+
+async function openSecretItemAdminModal(id = null) {
+    currentSecretItemId = id;
+    let item = null;
+    if (id) {
+        item = await getSecretItemById(id);
+    }
+
+    document.getElementById('secretItemName').value = item ? item.name : '';
+    document.getElementById('secretItemLevel').value = item ? item.level : 1;
+    document.getElementById('secretItemType').value = item ? item.type : 'temporary';
+    document.getElementById('secretItemExpiryText').value = item ? (item.expiry_text || '') : '';
+    document.getElementById('secretItemDescription').value = item ? (item.description || '') : '';
+    document.getElementById('secretItemHowToGet').value = item ? (item.how_to_get || '') : '';
+    document.getElementById('secretItemIconRow').value = item ? (item.icon_row || 0) : 0;
+    document.getElementById('secretItemIconCol').value = item ? (item.icon_col || 0) : 0;
+    document.getElementById('secretItemIconPreview').innerHTML = item ? `✅ Выбрано: ряд ${(item.icon_row || 0) + 1}, колонка ${(item.icon_col || 0) + 1}` : '❌ Не выбрано';
+
+    const uniqueContainer = document.getElementById('secretUniqueContainer');
+    if (uniqueContainer) {
+        uniqueContainer.innerHTML = '';
+        const uniqueStats = item ? (item.unique_stats || []) : [];
+        uniqueStats.forEach(u => addSecretUniqueField(u));
+    }
+
+    const stats = item ? item.stats : {};
+    const statsList = ['точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'];
+    const icons = { 'точность': 'stat-icon-точность', 'урон': 'stat-icon-урон', 'блок': 'stat-icon-блок', 'уворот': 'stat-icon-уворот', 'оглушение': 'stat-icon-оглушение', 'броня': 'stat-icon-броня', 'здоровье': 'stat-icon-здоровье' };
+    const names = { 'точность': 'Точность', 'урон': 'Урон', 'блок': 'Блок', 'уворот': 'Уворот', 'оглушение': 'Оглушение', 'броня': 'Броня', 'здоровье': 'Здоровье' };
+    const statsGrid = document.getElementById('secretItemStatsGrid');
+    if (statsGrid) {
+        statsGrid.innerHTML = '';
+        statsList.forEach(stat => {
+            const div = document.createElement('div');
+            div.className = 'stat-field';
+            div.innerHTML = `<label><span class="stat-icon ${icons[stat]}"></span> ${names[stat]}:</label><input type="text" class="stat-${stat}" value="${stats[stat] || ''}" placeholder="Значение">`;
+            statsGrid.appendChild(div);
+        });
+    }
+
+    document.getElementById('secretItemAdminModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSecretItemAdminModal() {
+    document.getElementById('secretItemAdminModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentSecretItemId = null;
+}
+
+async function saveSecretItemAdmin() {
+    const name = document.getElementById('secretItemName').value.trim();
+    if (!name) {
+        alert('❌ Введите название!');
+        return;
+    }
+
+    const stats = {};
+    const statsList = ['точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'];
+    statsList.forEach(stat => {
+        const input = document.querySelector(`#secretItemStatsGrid .stat-${stat}`);
+        if (input && input.value.trim()) stats[stat] = input.value.trim();
+    });
+
+    const uniqueStats = collectSecretUniqueStats();
+
+    const item = {
+        name: name,
+        type: document.getElementById('secretItemType').value,
+        level: parseInt(document.getElementById('secretItemLevel').value) || 1,
+        icon_row: parseInt(document.getElementById('secretItemIconRow').value) || 0,
+        icon_col: parseInt(document.getElementById('secretItemIconCol').value) || 0,
+        stats: stats,
+        unique_stats: uniqueStats,
+        description: document.getElementById('secretItemDescription').value.trim() || '',
+        expiry_text: document.getElementById('secretItemExpiryText').value.trim() || '',
+        how_to_get: document.getElementById('secretItemHowToGet').value.trim() || ''
+    };
+    if (currentSecretItemId) item.id = currentSecretItemId;
+
+    const result = await saveSecretItem(item);
+    if (result) {
+        closeSecretItemAdminModal();
+        await loadSecretItemsAdmin();
+        alert('✅ Сохранено!');
+    } else {
+        alert('❌ Ошибка при сохранении!');
+    }
+}
+
+async function deleteSecretItemAdmin(id) {
+    if (!confirm('Удалить секретную вещь?')) return;
+    const success = await deleteSecretItem(id);
+    if (success) {
+        await loadSecretItemsAdmin();
+        alert('🗑️ Удалено');
+    } else {
+        alert('❌ Ошибка при удалении!');
+    }
+}
+
+// ==================== СЕКРЕТНЫЕ СЕТЫ (АДМИНКА) ====================
+let allSecretSets = [];
+let currentSetId = null;
+
+async function loadSecretSetsAdmin() {
+    allSecretSets = await getSecretSets();
+    renderSecretSetsAdmin(allSecretSets);
+}
+
+function renderSecretSetsAdmin(data) {
+    const tbody = document.getElementById('secretSetsList');
+    if (!tbody) return;
+    let html = '';
+    for (const d of data) {
+        const styleText = d.style === 'rare' ? 'Урон' : d.style === 'uncommon' ? 'Уворот' : d.style === 'armor' ? 'Броня' : d.style === 'epic' ? 'Элита' : '—';
+        html += `<tr>
+            <td>${d.id}</td>
+            <td>${escapeHtml(d.name)}</div></td>
+            <td>${styleText}</div></td>
+            <td>${d.level}</div></td>
+            <td>
+                <button class="edit-btn" onclick="openSetAdminModal(${d.id})">✏️</button>
+                <button class="delete-btn" onclick="deleteSetAdmin(${d.id})">🗑️</button>
+            </div></td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+async function openSetAdminModal(id = null) {
+    currentSetId = id;
+    let set = null;
+    if (id) {
+        set = await getSecretSetById(id);
+    }
+    document.getElementById('setNameAdmin').value = set ? set.name : '';
+    document.getElementById('setLevelAdmin').value = set ? set.level : 1;
+    document.getElementById('setStyleAdmin').value = set ? set.style : '';
+    document.getElementById('setAdminModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSetAdminModal() {
+    document.getElementById('setAdminModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentSetId = null;
+}
+
+async function saveSetAdmin() {
+    const name = document.getElementById('setNameAdmin').value.trim();
+    if (!name) {
+        alert('❌ Введите название сета!');
+        return;
+    }
+    const set = {
+        name: name,
+        level: parseInt(document.getElementById('setLevelAdmin').value) || 1,
+        style: document.getElementById('setStyleAdmin').value
+    };
+    if (currentSetId) set.id = currentSetId;
+
+    const result = await saveSecretSet(set);
+    if (result) {
+        closeSetAdminModal();
+        await loadSecretSetsAdmin();
+        alert('✅ Сет сохранен!');
+    } else {
+        alert('❌ Ошибка при сохранении!');
+    }
+}
+
+async function deleteSetAdmin(id) {
+    if (!confirm('Удалить сет и все его предметы?')) return;
+    const items = await getSecretSetItemsBySetId(id);
+    for (const item of items) {
+        await deleteSecretSetItem(item.id);
+    }
+    const success = await deleteSecretSet(id);
+    if (success) {
+        await loadSecretSetsAdmin();
+        alert('🗑️ Сет удален');
+    } else {
+        alert('❌ Ошибка при удалении!');
+    }
+}
+
+// ==================== ПРЕДМЕТЫ СЕТОВ (АДМИНКА) ====================
+let currentSetItemId = null;
+let currentItemSetId = null;
+
+async function initSecretSetItemsPanel() {
+    const sets = await getSecretSets();
+    const select = document.getElementById('setFilterSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Выберите сет --</option>';
+    for (const set of sets) {
+        select.innerHTML += `<option value="${set.id}">${escapeHtml(set.name)}</option>`;
+    }
+    if (select.onchange) {
+        select.removeEventListener('change', loadSecretSetItemsBySet);
+    }
+    select.addEventListener('change', loadSecretSetItemsBySet);
+}
+
+async function loadSecretSetItemsBySet() {
+    const setId = document.getElementById('setFilterSelect').value;
+    const tbody = document.getElementById('secretSetItemsList');
+    if (!setId) {
+        tbody.innerHTML = '<tr><td colspan="6">Выберите сет</td></tr>';
+        return;
+    }
+
+    const items = await getSecretSetItems(parseInt(setId));
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">📭 В этом сете нет предметов</td></tr>';
+        return;
+    }
+
+    let html = '';
+    for (const item of items) {
+        const uniqueText = item.unique_stats && item.unique_stats.length > 0 ? item.unique_stats.slice(0, 2).join(', ') + (item.unique_stats.length > 2 ? '...' : '') : '—';
+        html += `<tr>
+            <td>${item.id}</td>
+            <td><div class="shop-icon" style="--row:${item.icon_row}; --col:${item.icon_col}; width:80px; height:80px;"></div></td>
+            <td>${escapeHtml(item.name)}</div></td>
+            <td>${item.level}</div></td>
+            <td>${uniqueText}</div></td>
+            <td>
+                <button class="edit-btn" onclick="openSetItemAdminModal(${item.id})">✏️</button>
+                <button class="delete-btn" onclick="deleteSetItemAdmin(${item.id})">🗑️</button>
+            </div></td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+async function openSetItemAdminModal(itemId = null, setId = null) {
+    currentSetItemId = itemId;
+    currentItemSetId = setId;
+
+    let item = null;
+    if (itemId) {
+        item = await getSecretSetItemById(itemId);
+        currentItemSetId = item.set_id;
+    }
+
+    document.getElementById('setItemName').value = item ? item.name : '';
+    document.getElementById('setItemLevel').value = item ? item.level : 1;
+    document.getElementById('setItemStyle').value = item ? (item.style || '') : '';
+    document.getElementById('setItemIconRow').value = item ? (item.icon_row || 0) : 0;
+    document.getElementById('setItemIconCol').value = item ? (item.icon_col || 0) : 0;
+    document.getElementById('setItemIconPreview').innerHTML = item ? `✅ Выбрано: ряд ${(item.icon_row || 0) + 1}, колонка ${(item.icon_col || 0) + 1}` : '❌ Не выбрано';
+    document.getElementById('setItemDescription').value = item ? (item.description || '') : '';
+    document.getElementById('setItemHowToGet').value = item ? (item.how_to_get || '') : '';
+
+    const uniqueContainer = document.getElementById('setItemUniqueContainer');
+    if (uniqueContainer) {
+        uniqueContainer.innerHTML = '';
+        const uniqueStats = item ? (item.unique_stats || []) : [];
+        uniqueStats.forEach(u => addSetItemUniqueField(u));
+    }
+
+    const stats = item ? item.stats : {};
+    const statsList = ['точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'];
+    const icons = { 'точность': 'stat-icon-точность', 'урон': 'stat-icon-урон', 'блок': 'stat-icon-блок', 'уворот': 'stat-icon-уворот', 'оглушение': 'stat-icon-оглушение', 'броня': 'stat-icon-броня', 'здоровье': 'stat-icon-здоровье' };
+    const names = { 'точность': 'Точность', 'урон': 'Урон', 'блок': 'Блок', 'уворот': 'Уворот', 'оглушение': 'Оглушение', 'броня': 'Броня', 'здоровье': 'Здоровье' };
+    const statsGrid = document.getElementById('setItemStatsGrid');
+    if (statsGrid) {
+        statsGrid.innerHTML = '';
+        statsList.forEach(stat => {
+            const div = document.createElement('div');
+            div.className = 'stat-field';
+            div.innerHTML = `<label><span class="stat-icon ${icons[stat]}"></span> ${names[stat]}:</label><input type="text" class="stat-${stat}" value="${stats[stat] || ''}" placeholder="Значение">`;
+            statsGrid.appendChild(div);
+        });
+    }
+
+    document.getElementById('setItemAdminModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function addSetItemUniqueField(value = '') {
+    const container = document.getElementById('setItemUniqueContainer');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'unique-row';
+    div.innerHTML = `<input type="text" class="set-item-unique-value" value="${escapeHtml(value)}" placeholder="Уникальная характеристика"><button onclick="this.parentElement.remove()">🗑️</button>`;
+    container.appendChild(div);
+}
+
+function collectSetItemUniqueStats() {
+    const unique = [];
+    document.querySelectorAll('#setItemUniqueContainer .set-item-unique-value').forEach(input => {
+        if (input.value.trim()) unique.push(input.value.trim());
+    });
+    return unique;
+}
+
+function closeSetItemAdminModal() {
+    document.getElementById('setItemAdminModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentSetItemId = null;
+    currentItemSetId = null;
+}
+
+async function saveSetItemAdmin() {
+    const name = document.getElementById('setItemName').value.trim();
+    if (!name) {
+        alert('❌ Введите название предмета!');
+        return;
+    }
+    if (!currentItemSetId) {
+        alert('❌ Ошибка: не выбран сет!');
+        return;
+    }
+
+    const stats = {};
+    const statsList = ['точность', 'урон', 'блок', 'уворот', 'оглушение', 'броня', 'здоровье'];
+    statsList.forEach(stat => {
+        const input = document.querySelector(`#setItemStatsGrid .stat-${stat}`);
+        if (input && input.value.trim()) stats[stat] = input.value.trim();
+    });
+
+    const uniqueStats = collectSetItemUniqueStats();
+
+    const item = {
+        set_id: currentItemSetId,
+        name: name,
+        level: parseInt(document.getElementById('setItemLevel').value) || 1,
+        style: document.getElementById('setItemStyle').value,
+        icon_row: parseInt(document.getElementById('setItemIconRow').value) || 0,
+        icon_col: parseInt(document.getElementById('setItemIconCol').value) || 0,
+        stats: stats,
+        unique_stats: uniqueStats,
+        description: document.getElementById('setItemDescription').value.trim() || '',
+        how_to_get: document.getElementById('setItemHowToGet').value.trim() || ''
+    };
+    if (currentSetItemId) item.id = currentSetItemId;
+
+    const result = await saveSecretSetItem(item);
+    if (result) {
+        closeSetItemAdminModal();
+        await loadSecretSetsAdmin();
+        await loadSecretSetItemsBySet();
+        alert('✅ Предмет сохранен!');
+    } else {
+        alert('❌ Ошибка при сохранении!');
+    }
+}
+
+async function deleteSetItemAdmin(itemId) {
+    if (!confirm('Удалить этот предмет?')) return;
+    const success = await deleteSecretSetItem(itemId);
+    if (success) {
+        await loadSecretSetsAdmin();
+        await loadSecretSetItemsBySet();
+        alert('🗑️ Предмет удален');
+    } else {
+        alert('❌ Ошибка при удалении!');
+    }
 }
 
 // Запуск
