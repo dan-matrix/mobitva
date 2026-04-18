@@ -113,7 +113,7 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 .items-table tr:hover{transform:translateY(-3px);border-color:#c7ba00;box-shadow:0 6px 16px rgba(199,186,0,0.25);}
 .items-table td{display:block;padding:2px 0;text-align:center;}
 .item-cell{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
-.item-cell .shop-icon{width:80px;height:80px;margin:0 auto;border-radius:8px;border:0.1px solid #4a3f32;}
+.item-cell .shop-icon{width:80px;height:80px;margin:0 auto;border-radius:8px;border:1px solid #4a3f32;}
 .item-cell span{font-size:13px;font-weight:bold;color:#e8dcc0;margin-top:2px;}
 .style-cell{font-size:13px;padding:6px 20px;border-radius:30px;display:inline-block;font-weight:bold;min-width:80px;margin:5px auto;text-align:center;}
 .style-cell.rare{background:rgba(76,175,80,0.3);color:#9edf9e;border:1px solid rgba(76,175,80,0.5);}
@@ -495,6 +495,13 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 .global-search-name{font-size:12px;color:#e8dcc0;flex:1;word-break:break-word;}
 .global-search-empty{text-align:center;padding:30px;color:#a0a0a0;font-size:12px;}
 .global-search-empty::before{content:"🔍";display:block;font-size:32px;margin-bottom:10px;opacity:0.5;}
+.global-search-loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;color:#c7ba00;font-size:13px;}
+.loading-dots{display:inline-flex;gap:4px;}
+.loading-dots::before,.loading-dots::after,.loading-dots{content:'';width:8px;height:8px;background:#c7ba00;border-radius:50%;animation:dotPulse 1.4s infinite ease-in-out both;}
+.loading-dots::before{animation-delay:-0.32s;}
+.loading-dots{animation-delay:-0.16s;}
+.loading-dots::after{animation-delay:0s;}
+@keyframes dotPulse{0%,80%,100%{transform:scale(0.6);opacity:0.4;}40%{transform:scale(1);opacity:1;}}
 
 /* ==================== УСИЛЕНИЯ ==================== */
 .enhancements-container{max-width:800px;margin:0 auto;}

@@ -331,6 +331,12 @@ async function performGlobalSearch() {
         return;
     }
     
+    // Показываем индикатор загрузки
+    resultsContainer.innerHTML = '<div class="global-search-loading"><div class="loading-dots"></div><span>Поиск...</span></div>';
+    
+    // Даём время на отрисовку индикатора
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     const items = await getItems();
     const demons = await getDemons();
     const totems = await getTotems();
@@ -344,70 +350,60 @@ async function performGlobalSearch() {
     
     const results = [];
     
-    // Поиск по обычным предметам
     items.forEach(item => {
         if(item.name.toLowerCase().includes(searchTerm) || (item.description && item.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '📦 Предмет', name: item.name, id: item.id, url: `main.html?id=${item.id}&open=modal` });
         }
     });
     
-    // Поиск по демонам
     demons.forEach(d => {
         if(d.name.toLowerCase().includes(searchTerm) || (d.description && d.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '👹 Круг демона', name: d.name, id: d.id, url: `demon.html?id=${d.id}&open=modal` });
         }
     });
     
-    // Поиск по тотемам
     totems.forEach(t => {
         if(t.name.toLowerCase().includes(searchTerm) || (t.description && t.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🧪 Тотем', name: t.name, id: t.id, url: `totem.html?id=${t.id}&open=modal` });
         }
     });
     
-    // Поиск по рунам мастера
     masterRunes.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🏰 Руна мастера', name: r.name, id: r.id, url: `master.html?id=${r.id}&open=modal` });
         }
     });
     
-    // Поиск по рунам друидов
     druidsRunes.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🌿 Руна друидов', name: r.name, id: r.id, url: `druids.html?id=${r.id}&open=modal` });
         }
     });
     
-    // Поиск по квестовым рунам
     nakolki.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🏚️ Квестовая руна', name: r.name, id: r.id, url: `nakolki.html?id=${r.id}&open=modal` });
         }
     });
     
-    // Поиск по новостям
     news.forEach(n => {
         if(n.title.toLowerCase().includes(searchTerm) || n.content.toLowerCase().includes(searchTerm)) {
             results.push({ type: '📰 Новость', name: n.title, id: n.id, url: `news.html?id=${n.id}&open=modal` });
         }
     });
     
-    // Поиск по секретным вещам
     secretItems.forEach(item => {
         if(item.name.toLowerCase().includes(searchTerm) || (item.description && item.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🔮 Секретная вещь', name: item.name, id: item.id, url: `secret_items.html?id=${item.id}&open=modal` });
         }
     });
     
-    // Поиск по секретным сетам
     secretSets.forEach(set => {
         if(set.name.toLowerCase().includes(searchTerm)) {
             results.push({ type: '👘 Секретный сет', name: set.name, id: set.id, url: `secret_sets.html?set=${set.id}&open=modal` });
         }
     });
     
-    // Поиск по локациям карты
     mapLocations.forEach(loc => {
         if(loc.name.toLowerCase().includes(searchTerm) || (loc.description && loc.description.toLowerCase().includes(searchTerm))) {
             results.push({ type: '🗺️ Локация', name: loc.name, id: loc.id, url: `map.html?id=${loc.id}&open=modal` });
@@ -432,7 +428,6 @@ async function performGlobalSearch() {
     }
     resultsContainer.innerHTML = html;
 }
-
 // Открытие/закрытие выпадающего окна глобального поиска
 function toggleGlobalSearch() {
     const dropdown = document.getElementById('globalSearchDropdown');
