@@ -128,15 +128,6 @@ window.onclick = function (e) {
     }
 };
 
-// Открытие модалки выбора рун
-function openRunesModal() { 
-    const m = document.getElementById('runesModal'); 
-    if (m) { 
-        m.style.display = 'flex'; 
-        document.body.style.overflow = 'hidden'; 
-    } 
-}
-
 // Закрытие модалки рун
 function closeRunesModal() { 
     closeModal('runesModal'); 
