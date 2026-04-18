@@ -1,10 +1,13 @@
 // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
+
+// Экранирование HTML спецсимволов для безопасности
 function escapeHtml(text) { 
     const div = document.createElement('div'); 
     div.textContent = text; 
     return div.innerHTML; 
 }
 
+// Преобразование английского названия стиля в русское
 function getRussianStyleText(styleValue) { 
     switch (styleValue) { 
         case "rare": return "Урон"; 
@@ -15,6 +18,7 @@ function getRussianStyleText(styleValue) {
     } 
 }
 
+// Возвращает CSS класс для иконки характеристики
 function getStatIconClass(statName) { 
     const name = String(statName).toLowerCase(); 
     const map = { 
@@ -30,11 +34,13 @@ function getStatIconClass(statName) {
     return 'stat-icon ' + (map[name] || 'stat-icon-износ'); 
 }
 
+// Проверка авторизации пользователя в localStorage
 function checkAuth() { 
     const user = localStorage.getItem('user'); 
     return user ? JSON.parse(user) : null; 
 }
 
+// Отображение админ-панели или пользовательской панели в зависимости от роли
 function displayAdminPanel() { 
     const user = checkAuth(); 
     const ap = document.getElementById('adminPanel'); 
@@ -58,6 +64,21 @@ function displayAdminPanel() {
         if (ab) ab.style.display = 'none'; 
         const n = document.getElementById('userName'); 
         if (n) n.textContent = user.name; 
+        
+        // Добавляем кнопку профиля в панель пользователя
+        const actionsDiv = document.querySelector('#userPanel .admin-actions');
+        if (actionsDiv && !actionsDiv.querySelector('.profile-btn')) {
+            const profileBtn = document.createElement('button');
+            profileBtn.className = 'admin-btn profile-btn';
+            profileBtn.innerHTML = '👤 Профиль';
+            profileBtn.onclick = () => location.href = 'profile.html';
+            const logoutBtn = actionsDiv.querySelector('.logout-btn');
+            if (logoutBtn) {
+                actionsDiv.insertBefore(profileBtn, logoutBtn);
+            } else {
+                actionsDiv.appendChild(profileBtn);
+            }
+        }
     }
     
     addBellToHeader();
@@ -68,15 +89,18 @@ function displayAdminPanel() {
     initSound();
 }
 
+// Выход из аккаунта
 function logout() { 
     localStorage.removeItem('user'); 
     window.location.href = 'auth.html'; 
 }
 
+// Открытие админ-панели
 function openAdminPanel() { 
     window.location.href = 'admin.html'; 
 }
 
+// Закрытие модального окна по ID
 function closeModal(id) { 
     const m = document.getElementById(id); 
     if (m) { 
@@ -85,6 +109,7 @@ function closeModal(id) {
     } 
 }
 
+// Закрытие модалки при клике вне её области
 window.onclick = function (e) { 
     const ids = ['runesModal', 'demonModal', 'runeModal', 'totemModal', 'editModal', 'editNewsModal', 'item-modal', 'editItemModal']; 
     for (let id of ids) { 
@@ -96,6 +121,7 @@ window.onclick = function (e) {
     } 
 };
 
+// Открытие модалки выбора рун
 function openRunesModal() { 
     const m = document.getElementById('runesModal'); 
     if (m) { 
@@ -104,22 +130,24 @@ function openRunesModal() {
     } 
 }
 
+// Закрытие модалки рун
 function closeRunesModal() { 
     closeModal('runesModal'); 
 }
 
 // ==================== ЗВУКОВЫЕ УВЕДОМЛЕНИЯ ====================
+
 let soundEnabled = localStorage.getItem('soundEnabled') === 'true';
 let audioCtx = null;
 let audioUnlocked = false;
 
+// Инициализация звуковой системы
 function initSound() {
     if(soundEnabled === null) {
         soundEnabled = true;
         localStorage.setItem('soundEnabled', 'true');
     }
     
-    // Создаем AudioContext в приостановленном состоянии
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtx = new AudioContext();
@@ -130,7 +158,6 @@ function initSound() {
     
     updateSoundButton();
     
-    // Разблокируем при первом клике на страницу
     const unlockAudio = () => {
         if(audioCtx && !audioUnlocked) {
             audioCtx.resume().then(() => {
@@ -148,11 +175,11 @@ function initSound() {
     document.addEventListener('touchstart', unlockAudio);
 }
 
+// Воспроизведение звука уведомления
 function playNotificationSound() {
     if(!soundEnabled) return;
     if(!audioCtx) return;
     if(!audioUnlocked) {
-        // Пытаемся разблокировать
         if(audioCtx) {
             audioCtx.resume().then(() => {
                 audioUnlocked = true;
@@ -197,6 +224,7 @@ function playNotificationSound() {
     }
 }
 
+// Включение/выключение звука
 function toggleSound() {
     soundEnabled = !soundEnabled;
     localStorage.setItem('soundEnabled', soundEnabled);
@@ -206,6 +234,7 @@ function toggleSound() {
     }
 }
 
+// Обновление иконки кнопки звука
 function updateSoundButton() {
     const soundBtn = document.getElementById('soundToggleBtn');
     if(soundBtn) {
@@ -214,6 +243,7 @@ function updateSoundButton() {
     }
 }
 
+// Добавление кнопки звука в шапку уведомлений
 function addSoundToggleButton() {
     const notificationHeader = document.querySelector('.notification-header');
     if(!notificationHeader || document.getElementById('soundToggleBtn')) return;
@@ -228,7 +258,10 @@ function addSoundToggleButton() {
         headerButtons.insertAdjacentHTML('afterbegin', soundHtml);
     }
 }
+
 // ==================== ГОРЯЧИЕ КЛАВИШИ ====================
+
+// Инициализация горячих клавиш
 function initHotkeys() {
     document.addEventListener('keydown', function(e) {
         if(e.key === 'Escape') {
@@ -263,9 +296,27 @@ function initHotkeys() {
 }
 
 // ==================== ГЛОБАЛЬНЫЙ ПОИСК ====================
+
 let globalSearchTimeout = null;
 let globalSearchResults = [];
 
+// Получение секретных вещей из БД
+async function getSecretItems() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_items_new').select('*'); 
+    if (error) return []; 
+    return data; 
+}
+
+// Получение секретных сетов из БД
+async function getSecretSets() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('secret_sets_new').select('*'); 
+    if (error) return []; 
+    return data; 
+}
+
+// Выполнение глобального поиска по всем сущностям
 async function performGlobalSearch() {
     const searchInput = document.getElementById('globalSearchInput');
     if(!searchInput) return;
@@ -287,48 +338,79 @@ async function performGlobalSearch() {
     const druidsRunes = await getDruidsRunes();
     const nakolki = await getNakolki();
     const news = await getNews();
+    const secretItems = await getSecretItems();
+    const secretSets = await getSecretSets();
+    const mapLocations = await getMapLocations();
     
     const results = [];
     
+    // Поиск по обычным предметам
     items.forEach(item => {
         if(item.name.toLowerCase().includes(searchTerm) || (item.description && item.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '📦 Предмет', name: item.name, id: item.id, url: `main.html?item=${item.id}`, section: 'items' });
+            results.push({ type: '📦 Предмет', name: item.name, id: item.id, url: `main.html?id=${item.id}&open=modal` });
         }
     });
     
+    // Поиск по демонам
     demons.forEach(d => {
         if(d.name.toLowerCase().includes(searchTerm) || (d.description && d.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '👹 Круг демона', name: d.name, id: d.id, url: `demon.html?demon=${d.id}`, section: 'demons' });
+            results.push({ type: '👹 Круг демона', name: d.name, id: d.id, url: `demon.html?id=${d.id}&open=modal` });
         }
     });
     
+    // Поиск по тотемам
     totems.forEach(t => {
         if(t.name.toLowerCase().includes(searchTerm) || (t.description && t.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '🧪 Тотем', name: t.name, id: t.id, url: `totem.html?totem=${t.id}`, section: 'totems' });
+            results.push({ type: '🧪 Тотем', name: t.name, id: t.id, url: `totem.html?id=${t.id}&open=modal` });
         }
     });
     
+    // Поиск по рунам мастера
     masterRunes.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '🏰 Руна мастера', name: r.name, id: r.id, url: `master.html?rune=${r.id}`, section: 'master' });
+            results.push({ type: '🏰 Руна мастера', name: r.name, id: r.id, url: `master.html?id=${r.id}&open=modal` });
         }
     });
     
+    // Поиск по рунам друидов
     druidsRunes.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '🌿 Руна друидов', name: r.name, id: r.id, url: `druids.html?rune=${r.id}`, section: 'druids' });
+            results.push({ type: '🌿 Руна друидов', name: r.name, id: r.id, url: `druids.html?id=${r.id}&open=modal` });
         }
     });
     
+    // Поиск по квестовым рунам
     nakolki.forEach(r => {
         if(r.name.toLowerCase().includes(searchTerm) || (r.description && r.description.toLowerCase().includes(searchTerm))) {
-            results.push({ type: '🏚️ Квестовая руна', name: r.name, id: r.id, url: `nakolki.html?rune=${r.id}`, section: 'nakolki' });
+            results.push({ type: '🏚️ Квестовая руна', name: r.name, id: r.id, url: `nakolki.html?id=${r.id}&open=modal` });
         }
     });
     
+    // Поиск по новостям
     news.forEach(n => {
         if(n.title.toLowerCase().includes(searchTerm) || n.content.toLowerCase().includes(searchTerm)) {
-            results.push({ type: '📰 Новость', name: n.title, id: n.id, url: `news.html?id=${n.id}`, section: 'news' });
+            results.push({ type: '📰 Новость', name: n.title, id: n.id, url: `news.html?id=${n.id}&open=modal` });
+        }
+    });
+    
+    // Поиск по секретным вещам
+    secretItems.forEach(item => {
+        if(item.name.toLowerCase().includes(searchTerm) || (item.description && item.description.toLowerCase().includes(searchTerm))) {
+            results.push({ type: '🔮 Секретная вещь', name: item.name, id: item.id, url: `secret_items.html?id=${item.id}&open=modal` });
+        }
+    });
+    
+    // Поиск по секретным сетам
+    secretSets.forEach(set => {
+        if(set.name.toLowerCase().includes(searchTerm)) {
+            results.push({ type: '👘 Секретный сет', name: set.name, id: set.id, url: `secret_sets.html?set=${set.id}&open=modal` });
+        }
+    });
+    
+    // Поиск по локациям карты
+    mapLocations.forEach(loc => {
+        if(loc.name.toLowerCase().includes(searchTerm) || (loc.description && loc.description.toLowerCase().includes(searchTerm))) {
+            results.push({ type: '🗺️ Локация', name: loc.name, id: loc.id, url: `map.html?id=${loc.id}&open=modal` });
         }
     });
     
@@ -351,6 +433,7 @@ async function performGlobalSearch() {
     resultsContainer.innerHTML = html;
 }
 
+// Открытие/закрытие выпадающего окна глобального поиска
 function toggleGlobalSearch() {
     const dropdown = document.getElementById('globalSearchDropdown');
     if(!dropdown) return;
@@ -363,6 +446,7 @@ function toggleGlobalSearch() {
     }
 }
 
+// Добавление глобального поиска в шапку сайта
 function addGlobalSearch() {
     const headerWrapper = document.querySelector('.header-wrapper');
     if(!headerWrapper || document.querySelector('.global-search')) return;
@@ -421,13 +505,16 @@ function addGlobalSearch() {
 }
 
 // ==================== УВЕДОМЛЕНИЯ И КОЛОКОЛЬЧИК ====================
+
 let notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
 let notificationInterval = null;
 
+// Сохранение уведомлений в localStorage
 function saveNotifications() {
     localStorage.setItem('notifications', JSON.stringify(notifications));
 }
 
+// Добавление нового уведомления
 function addNotification(title, message, timerId, characterName) {
     const newNotification = {
         id: Date.now(),
@@ -444,20 +531,15 @@ function addNotification(title, message, timerId, characterName) {
     updateBellBadge();
     renderNotificationDropdown();
     
-    // Браузерное уведомление с опцией звука
     if(Notification.permission === 'granted') {
         const options = {
             body: message,
-            icon: '/favicon.ico', // можно указать иконку
-            silent: false, // false = звук будет, если разрешено
-            vibrate: [200, 100, 200] // вибрация на мобилках (если есть)
+            icon: '/favicon.ico',
+            silent: false,
+            vibrate: [200, 100, 200]
         };
         const browserNotification = new Notification(title, options);
-        
-        // Закрыть уведомление через 5 секунд
         setTimeout(() => browserNotification.close(), 5000);
-        
-        // При клике на уведомление переходим в профиль
         browserNotification.onclick = function() {
             window.focus();
             window.location.href = 'profile.html';
@@ -467,6 +549,7 @@ function addNotification(title, message, timerId, characterName) {
     playNotificationSound();
 }
 
+// Обновление счетчика непрочитанных уведомлений
 function updateBellBadge() {
     const unreadCount = notifications.filter(n => !n.read).length;
     const badge = document.querySelector('.bell-badge');
@@ -480,6 +563,7 @@ function updateBellBadge() {
     }
 }
 
+// Отрисовка списка уведомлений
 function renderNotificationDropdown() {
     const container = document.getElementById('notificationList');
     if(!container) return;
@@ -508,6 +592,7 @@ function renderNotificationDropdown() {
     container.innerHTML = html;
 }
 
+// Отметка одного уведомления как прочитанного
 function markNotificationRead(id) {
     const notification = notifications.find(n => n.id === id);
     if(notification) {
@@ -518,6 +603,7 @@ function markNotificationRead(id) {
     }
 }
 
+// Отметка всех уведомлений как прочитанных
 function markAllNotificationsRead() {
     notifications.forEach(n => n.read = true);
     saveNotifications();
@@ -525,6 +611,7 @@ function markAllNotificationsRead() {
     renderNotificationDropdown();
 }
 
+// Очистка всех уведомлений
 function clearAllNotifications() {
     notifications = [];
     saveNotifications();
@@ -532,6 +619,7 @@ function clearAllNotifications() {
     renderNotificationDropdown();
 }
 
+// Открытие/закрытие выпадающего окна уведомлений
 function toggleNotificationDropdown() {
     const dropdown = document.getElementById('notificationDropdown');
     if(!dropdown) return;
@@ -549,6 +637,7 @@ function toggleNotificationDropdown() {
     }
 }
 
+// Проверка завершенных таймеров для создания уведомлений
 async function checkTimersForNotifications() {
     const user = checkAuth();
     if(!user) return;
@@ -587,6 +676,7 @@ async function checkTimersForNotifications() {
     }
 }
 
+// Запуск периодической проверки таймеров
 function startNotificationChecker() {
     if(notificationInterval) clearInterval(notificationInterval);
     notificationInterval = setInterval(() => {
@@ -596,11 +686,13 @@ function startNotificationChecker() {
     }, 10000);
 }
 
+// Инициализация системы уведомлений
 function initNotificationBell() {
     updateBellBadge();
     startNotificationChecker();
 }
 
+// Добавление иконки колокольчика в шапку сайта
 function addBellToHeader() {
     const headerWrapper = document.querySelector('.header-wrapper');
     if(!headerWrapper || document.querySelector('.notification-bell')) return;
@@ -643,10 +735,96 @@ function addBellToHeader() {
     });
 }
 
-// Экспорт в глобальную область
+// ==================== УНИВЕРСАЛЬНОЕ ОТКРЫТИЕ МОДАЛКИ ИЗ URL ====================
+
+// Автоматическое открытие модалки при переходе по ссылке с параметром ?id=...&open=modal
+async function openModalFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    const setId = urlParams.get('set');
+    const openModal = urlParams.get('open');
+    
+    if (!openModal || openModal !== 'modal') return;
+    
+    const path = window.location.pathname;
+    
+    // Для секретных сетов - не удаляем параметры, пусть страница сама обработает
+    const isSecretSets = path.includes('secret_sets.html');
+    
+    setTimeout(async () => {
+        try {
+            // Демоны
+            if (path.includes('demon.html') && typeof openDemonModal === 'function' && id) {
+                openDemonModal(parseInt(id));
+            }
+            // Тотемы
+            else if (path.includes('totem.html') && typeof openTotemModal === 'function' && id) {
+                openTotemModal(parseInt(id));
+            }
+            // Руны (master, druids, nakolki)
+            else if ((path.includes('master.html') || path.includes('druids.html') || path.includes('nakolki.html')) && typeof openRuneModal === 'function' && id) {
+                openRuneModal(parseInt(id));
+            }
+            // Секретные вещи
+            else if (path.includes('secret_items.html') && typeof openSecretItemModal === 'function' && id) {
+                openSecretItemModal(parseInt(id));
+            }
+            // Секретные сеты - пропускаем, страница сама обработает
+            else if (path.includes('secret_sets.html')) {
+                return;
+            }
+            // Карта (локации)
+            else if (path.includes('map.html') && id) {
+                if (typeof centerMapOnLocation === 'function' && typeof openLocationModal === 'function') {
+                    centerMapOnLocation(parseInt(id));
+                    setTimeout(() => {
+                        const loc = window.mapLocations?.find(l => l.id == id);
+                        if (loc && typeof openLocationModal === 'function') openLocationModal(loc);
+                    }, 300);
+                }
+            }
+            // Обычные предметы (main.html)
+            else if (path.includes('main.html') && typeof openItemModal === 'function' && id) {
+                openItemModal(parseInt(id));
+            }
+            // Новости (скролл к новости)
+            else if (path.includes('news.html') && id) {
+                const newsElement = document.querySelector(`.news-card[data-id="${id}"]`);
+                if (newsElement) {
+                    newsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    newsElement.style.border = '2px solid #c7ba00';
+                    setTimeout(() => {
+                        newsElement.style.border = '';
+                    }, 2000);
+                }
+            }
+        } catch(e) {
+            console.log('Ошибка открытия модалки из URL:', e);
+        }
+        
+        // Убираем параметры из URL ТОЛЬКО если это не secret_sets.html
+        if (!isSecretSets) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, 500);
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ ====================
+
+// Запуск всех систем после загрузки DOM
+document.addEventListener('DOMContentLoaded', function() {
+    displayAdminPanel();
+    openModalFromUrl();
+});
+
+// Экспорт функций в глобальную область
 window.toggleGlobalSearch = toggleGlobalSearch;
 window.toggleNotificationDropdown = toggleNotificationDropdown;
 window.markNotificationRead = markNotificationRead;
 window.markAllNotificationsRead = markAllNotificationsRead;
 window.clearAllNotifications = clearAllNotifications;
 window.toggleSound = toggleSound;
+window.openModalFromUrl = openModalFromUrl;
+window.getSecretItems = getSecretItems;
+window.getSecretSets = getSecretSets;
