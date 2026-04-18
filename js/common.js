@@ -111,7 +111,8 @@ function closeModal(id) {
 
 // Закрытие модалки при клике вне её области
 window.onclick = function (e) { 
-    const ids = ['runesModal', 'demonModal', 'runeModal', 'totemModal', 'editModal', 'editNewsModal', 'item-modal', 'editItemModal']; 
+    // Модалки, которые закрываются по клику на фон (админские модалки добавления/редактирования - НЕ закрываем)
+    const ids = ['runesModal', 'demonModal', 'runeModal', 'totemModal', 'editNewsModal', 'item-modal', 'editItemModal']; 
     for (let id of ids) { 
         const m = document.getElementById(id); 
         if (m && e.target === m) { 
@@ -119,6 +120,12 @@ window.onclick = function (e) {
             break; 
         } 
     } 
+    
+    // Модалка editModal (добавление/редактирование предметов в админке) - НЕ закрывается по клику на фон
+    const editModal = document.getElementById('editModal');
+    if (editModal && e.target === editModal) {
+        return; // ничего не делаем
+    }
 };
 
 // Открытие модалки выбора рун
