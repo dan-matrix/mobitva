@@ -109,6 +109,25 @@ function closeModal(id) {
     } 
 }
 
+// Открытие модалки выбора рун
+function openRunesModal() { 
+    const m = document.getElementById('runesModal'); 
+    if (m) { 
+        m.style.display = 'flex'; 
+        document.body.style.overflow = 'hidden'; 
+    } 
+}
+
+// Закрытие модалки рун
+function closeRunesModal() { 
+    const m = document.getElementById('runesModal'); 
+    if (m) { 
+        m.style.display = 'none'; 
+        document.body.style.overflow = ''; 
+    } 
+}
+
+
 // Закрытие модалки при клике вне её области
 window.onclick = function (e) { 
     // Модалки, которые закрываются по клику на фон (админские модалки добавления/редактирования - НЕ закрываем)
