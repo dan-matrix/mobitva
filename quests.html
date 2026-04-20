@@ -201,6 +201,7 @@
         function getRepeatIcon(repeatType, cooldown) {
             if (repeatType === 'once') return '🔒 Одноразовый';
             if (repeatType === 'repeat') return `🔄 Повторяющийся | ⏱️ ${cooldown}`;
+            if (repeatType === 'daily') return `🌙 Ежедневный | ⏱️ ${cooldown}`;
             return '';
         }
 
