@@ -54,6 +54,13 @@ async function loadTable(type) {
     if (type === 'secret_set_items') {
         await initSecretSetItemsPanel();
     }
+    if (type === 'quests') {
+    await loadQuestsAdmin();
+    const searchInput = document.getElementById('searchQuestsAdmin');
+    if (searchInput && !searchInput.hasListener) {
+        searchInput.addEventListener('input', () => filterQuestsAdmin());
+        searchInput.hasListener = true;}
+    }
 }
 
 // ==================== ПОИСК В АДМИНКЕ ====================
@@ -1161,8 +1168,346 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ==================== КВЕСТЫ (АДМИНКА) ====================
+let allQuestsAdmin = [];
+let currentQuestId = null;
+let mapLocationsList = [];
+
+async function loadQuestsAdmin() {
+    allQuestsAdmin = await getQuests();
+    renderQuestsAdmin(allQuestsAdmin);
+}
+
+function renderQuestsAdmin(data) {
+    const tbody = document.getElementById('questsList');
+    if (!tbody) return;
+    
+    let html = '';
+    for (const q of data) {
+        const typeText = q.type === 'story' ? 'Сюжетный' : q.type === 'reward' ? 'Плата' : q.type === 'item' ? 'Предмет' : 'Бесполезный';
+        const repeatText = q.repeat_type === 'once' ? 'Одноразовый' : q.repeat_type === 'repeat' ? 'Повторный' : 'Ежедневный';
+        html += `<tr>
+            <td>${q.id}</td>
+            <td>${escapeHtml(q.name)}</td>
+            <td>${escapeHtml(q.location_name)}</td>
+            <td>${q.level}</td>
+            <td>${typeText}</td>
+            <td>${repeatText}</td>
+            <td>
+                <button class="edit-btn" onclick="openQuestAdminModal(${q.id})">✏️</button>
+                <button class="delete-btn" onclick="deleteQuestAdmin(${q.id})">🗑️</button>
+            </td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+function filterQuestsAdmin() {
+    const searchTerm = document.getElementById('searchQuestsAdmin')?.value.toLowerCase().trim() || '';
+    if (!searchTerm) {
+        renderQuestsAdmin(allQuestsAdmin);
+        return;
+    }
+    const filtered = allQuestsAdmin.filter(q => q.name.toLowerCase().includes(searchTerm));
+    renderQuestsAdmin(filtered);
+}
+
+function clearQuestsSearch() {
+    const input = document.getElementById('searchQuestsAdmin');
+    if (input) input.value = '';
+    renderQuestsAdmin(allQuestsAdmin);
+}
+
+async function loadMapLocationsForSelect() {
+    mapLocationsList = await getMapLocations();
+    const select = document.getElementById('questLocationId');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Выберите локацию --</option>';
+    for (const loc of mapLocationsList) {
+        select.innerHTML += `<option value="${loc.id}">${escapeHtml(loc.name)}</option>`;
+    }
+}
+
+function showCooldownHelp() {
+    alert('СООТНОШЕНИЕ МИНУТ:\n\n60 минут = 1 час\n120 минут = 2 часа\n720 минут = 12 часов\n1440 минут = 1 день\n4320 минут = 3 дня\n10080 минут = 7 дней');
+}
+
+function addQuestRewardItemField(value = null) {
+    const container = document.getElementById('questRewardItemsContainer');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'unique-row';
+    div.style.flexWrap = 'wrap';
+    div.style.gap = '8px';
+    div.style.marginBottom = '8px';
+    
+    div.innerHTML = `
+        <select class="reward-item-category" style="width:130px; padding:8px; background:#0d0a07; border:1px solid #c7ba00; border-radius:6px; color:#e8dcc0;">
+            <option value="secret">Секретные вещи</option>
+            <option value="demon">Демоны</option>
+            <option value="rune">Руны</option>
+            <option value="item">Предметы</option>
+        </select>
+        <select class="reward-item-select" style="flex:2; padding:8px; background:#0d0a07; border:1px solid #c7ba00; border-radius:6px; color:#e8dcc0;">
+            <option value="">-- Выберите предмет --</option>
+        </select>
+        <button onclick="this.parentElement.remove()" style="background:#ff4444; border:none; border-radius:6px; padding:6px 12px; color:white; cursor:pointer;">Удалить</button>
+    `;
+    container.appendChild(div);
+    
+    const categorySelect = div.querySelector('.reward-item-category');
+    const itemSelect = div.querySelector('.reward-item-select');
+    
+    if (value) {
+        categorySelect.value = value.category || 'secret';
+    }
+    
+    categorySelect.addEventListener('change', () => {
+        loadItemsByCategory(categorySelect.value, itemSelect, value);
+    });
+    
+    loadItemsByCategory(categorySelect.value, itemSelect, value);
+}
+
+async function loadItemsByCategory(category, select, selectedValue = null) {
+    let items = [];
+    switch(category) {
+        case 'secret':
+            items = await getSecretItems();
+            break;
+        case 'demon':
+            items = await getDemons();
+            break;
+        case 'rune':
+            const master = await getMasterRunes();
+            const druids = await getDruidsRunes();
+            const nakolki = await getNakolki();
+            items = [...master, ...druids, ...nakolki];
+            break;
+        case 'item':
+            items = await getItems();
+            break;
+    }
+    
+    select.innerHTML = '<option value="">-- Выберите предмет --</option>';
+    for (const item of items) {
+        const selected = selectedValue && selectedValue.id === item.id ? 'selected' : '';
+        select.innerHTML += `<option value="${item.id}" data-name="${escapeHtml(item.name)}" data-level="${item.level || 0}" data-category="${category}" ${selected}>${escapeHtml(item.name)} (${item.level || 0} ур.)</option>`;
+    }
+}
+
+function collectQuestRewardItems() {
+    const items = [];
+    document.querySelectorAll('#questRewardItemsContainer .reward-item-select').forEach(select => {
+        const option = select.options[select.selectedIndex];
+        const categorySelect = select.closest('.unique-row')?.querySelector('.reward-item-category');
+        if (option && option.value) {
+            items.push({
+                id: parseInt(option.value),
+                name: option.getAttribute('data-name') || option.text.split(' (')[0],
+                level: parseInt(option.getAttribute('data-level')) || 0,
+                category: categorySelect ? categorySelect.value : 'secret'
+            });
+        }
+    });
+    return items;
+}
+
+async function openQuestAdminModal(id = null) {
+    currentQuestId = id;
+    await loadMapLocationsForSelect();
+    
+    let quest = null;
+    if (id) {
+        quest = await getQuestById(id);
+    }
+    
+    document.getElementById('questName').value = quest ? quest.name : '';
+    document.getElementById('questLocationId').value = quest ? (quest.location_id || '') : '';
+    document.getElementById('questLevel').value = quest ? quest.level : 1;
+    document.getElementById('questRepeatType').value = quest ? (quest.repeat_type || 'once') : 'once';
+    document.getElementById('questCooldown').value = quest ? (quest.cooldown || '') : '';
+    document.getElementById('questCooldownMinutes').value = quest ? (quest.cooldown_minutes || 0) : 0;
+    document.getElementById('questDescription').value = quest ? (quest.description || '') : '';
+    document.getElementById('questRequirements').value = quest ? (quest.requirements || '') : '';
+    document.getElementById('questRewardExp').value = quest?.rewards?.exp || 0;
+    document.getElementById('questRewardFee').value = quest?.rewards?.fee || 0;
+    document.getElementById('questRewardGold').value = quest?.rewards?.gold || 0;
+    document.getElementById('questRewardSilver').value = quest?.rewards?.silver || 0;
+    document.getElementById('questRewardCopper').value = quest?.rewards?.copper || 0;
+    
+    // Загрузка типов (кнопки-теги)
+    const questTypes = [];
+    if (quest) {
+        if (Array.isArray(quest.types)) {
+            questTypes.push(...quest.types);
+        } else if (quest.type) {
+            questTypes.push(quest.type);
+        }
+    } else {
+        questTypes.push('story');
+    }
+    
+    document.querySelectorAll('.quest-type-tag').forEach(tag => {
+        const typeValue = tag.dataset.type;
+        if (questTypes.includes(typeValue)) {
+            tag.classList.add('active');
+        } else {
+            tag.classList.remove('active');
+        }
+    });
+    
+    // Инициализируем обработчики для тегов
+    initQuestTypesTags();
+    
+    // Предметы в награде
+    const container = document.getElementById('questRewardItemsContainer');
+    if (container) {
+        container.innerHTML = '';
+        const items = quest?.rewards?.items || [];
+        for (const item of items) {
+            addQuestRewardItemField(item);
+        }
+    }
+    
+    // Скрываем/показываем серебро и медяки
+    const extraContainer = document.getElementById('extraRewardsContainer');
+    const showBtn = document.getElementById('showSilverCopperBtn');
+    const hideBtn = document.getElementById('hideSilverCopperBtn');
+    
+    if (extraContainer && showBtn && hideBtn) {
+        const hasSilver = (quest?.rewards?.silver || 0) > 0;
+        const hasCopper = (quest?.rewards?.copper || 0) > 0;
+        
+        if (hasSilver || hasCopper) {
+            extraContainer.style.display = 'block';
+            showBtn.style.display = 'none';
+            hideBtn.style.display = 'inline-block';
+        } else {
+            extraContainer.style.display = 'none';
+            showBtn.style.display = 'inline-block';
+            hideBtn.style.display = 'none';
+        }
+        
+        showBtn.onclick = () => {
+            extraContainer.style.display = 'block';
+            showBtn.style.display = 'none';
+            hideBtn.style.display = 'inline-block';
+        };
+        hideBtn.onclick = () => {
+            extraContainer.style.display = 'none';
+            showBtn.style.display = 'inline-block';
+            hideBtn.style.display = 'none';
+        };
+    }
+    
+    // Быстрые кнопки отката
+    setTimeout(() => {
+        document.querySelectorAll('.quick-cooldown').forEach(btn => {
+            btn.onclick = function() {
+                const minutes = parseInt(this.dataset.minutes);
+                const minutesInput = document.getElementById('questCooldownMinutes');
+                if (minutesInput) minutesInput.value = minutes;
+                
+                const textInput = document.getElementById('questCooldown');
+                if (textInput) {
+                    if (minutes === 120) textInput.value = '2 часа';
+                    else if (minutes === 720) textInput.value = '12 часов';
+                    else if (minutes === 1440) textInput.value = '1 день';
+                    else if (minutes === 4320) textInput.value = '3 дня';
+                    else if (minutes === 10080) textInput.value = '7 дней';
+                }
+            };
+        });
+    }, 100);
+    
+    document.getElementById('questAdminModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeQuestAdminModal() {
+    document.getElementById('questAdminModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentQuestId = null;
+}
+
+async function saveQuestAdmin() {
+    const name = document.getElementById('questName').value.trim();
+    if (!name) {
+        alert('Введите название квеста!');
+        return;
+    }
+    
+    const locationId = document.getElementById('questLocationId').value;
+    const location = mapLocationsList.find(l => l.id == locationId);
+    const locationName = location ? location.name : '';
+    
+    // Собираем типы из активных кнопок-тегов
+    const types = [];
+    document.querySelectorAll('.quest-type-tag.active').forEach(tag => {
+        types.push(tag.dataset.type);
+    });
+    if (types.length === 0) types.push('story');
+    
+    const rewards = {
+        exp: parseInt(document.getElementById('questRewardExp').value) || 0,
+        fee: parseInt(document.getElementById('questRewardFee').value) || 0,
+        gold: parseInt(document.getElementById('questRewardGold').value) || 0,
+        silver: parseInt(document.getElementById('questRewardSilver').value) || 0,
+        copper: parseInt(document.getElementById('questRewardCopper').value) || 0,
+        items: collectQuestRewardItems()
+    };
+    
+    const quest = {
+        name: name,
+        location_id: locationId ? parseInt(locationId) : null,
+        location_name: locationName,
+        level: parseInt(document.getElementById('questLevel').value) || 1,
+        types: types,
+        type: types[0],
+        repeat_type: document.getElementById('questRepeatType').value,
+        cooldown: document.getElementById('questCooldown').value,
+        cooldown_minutes: parseInt(document.getElementById('questCooldownMinutes').value) || 0,
+        description: document.getElementById('questDescription').value,
+        requirements: document.getElementById('questRequirements').value,
+        rewards: rewards
+    };
+    if (currentQuestId) quest.id = currentQuestId;
+    
+    const result = await saveQuest(quest);
+    if (result) {
+        closeQuestAdminModal();
+        await loadQuestsAdmin();
+        alert('Квест сохранён!');
+    } else {
+        alert('Ошибка при сохранении!');
+    }
+}
+
+async function deleteQuestAdmin(id) {
+    if (!confirm('Удалить квест?')) return;
+    const success = await deleteQuest(id);
+    if (success) {
+        await loadQuestsAdmin();
+        alert('Квест удалён');
+    } else {
+        alert('Ошибка при удалении!');
+    }
+}
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && e.target.tagName === 'TEXTAREA') {
         e.stopPropagation();
     }
 }, true);
+// Инициализация обработчиков для тегов типов квестов
+function initQuestTypesTags() {
+    document.querySelectorAll('.quest-type-tag').forEach(tag => {
+        tag.removeEventListener('click', tagClickHandler);
+        tag.addEventListener('click', tagClickHandler);
+    });
+}
+
+function tagClickHandler() {
+    this.classList.toggle('active');
+}

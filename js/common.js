@@ -821,7 +821,160 @@ async function openModalFromUrl() {
         }
     }, 500);
 }
+// ==================== УНИВЕРСАЛЬНОЕ ОТКРЫТИЕ ПРЕДМЕТА ДЛЯ КВЕСТОВ ====================
+window.openItemModalById = async function(itemId, category) {
+    let item = null;
+    
+    try {
+        switch(category) {
+            case 'secret':
+                item = await getSecretItemById(itemId);
+                break;
+            case 'demon':
+                item = await getDemonById(itemId);
+                break;
+            case 'rune':
+                item = await getMasterRuneById(itemId);
+                if (!item) item = await getDruidsRuneById(itemId);
+                if (!item) item = await getNakolkiById(itemId);
+                break;
+            case 'item':
+                item = await getItemById(itemId);
+                break;
+            default:
+                item = await getSecretItemById(itemId);
+        }
+    } catch(e) {
+        console.error('Ошибка:', e);
+        alert('Ошибка при получении предмета');
+        return;
+    }
+    
+    if (!item) {
+        alert('Предмет не найден');
+        return;
+    }
+    
+    let info = item.name + '\n';
+    info += 'Уровень: ' + (item.level || 0) + '\n';
+    if (item.type) info += 'Тип: ' + item.type + '\n';
+    if (item.description) info += '\nОписание: ' + item.description;
+    if (item.stats) {
+        const stats = Object.entries(item.stats).filter(([k,v]) => v).map(([k,v]) => k + ': ' + v).join(', ');
+        if (stats) info += '\nХарактеристики: ' + stats;
+    }
+    
+    alert(info);
+};
+// ==================== ОТКРЫТИЕ МОДАЛКИ СЕКРЕТНОГО ПРЕДМЕТА ====================
+async function openSecretItemModalById(itemId) {
+    try {
+        const item = await getSecretItemById(itemId);
+        if (!item) {
+            console.error('Предмет не найден:', itemId);
+            alert('❌ Предмет не найден');
+            return;
+        }
+        
+        // Создаём временную модалку, если её нет на странице
+        let modal = document.getElementById('secretItemModal');
+        if (!modal) {
+            // Создаём модалку динамически
+            modal = document.createElement('div');
+            modal.id = 'secretItemModal';
+            modal.className = 'rune-modal';
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <div class="rune-modal-content">
+                    <div class="rune-modal-header">
+                        <div class="rune-modal-close" onclick="closeSecretItemModalDynamic()">✕</div>
+                        <div class="rune-modal-icon">
+                            <div class="item-icon shop-icon" id="dynamicModalIcon" style="width:80px;height:80px;background-image:url('img/shop.png');background-repeat:no-repeat;"></div>
+                        </div>
+                        <div class="rune-modal-title" id="dynamicModalTitle"></div>
+                        <div class="rune-modal-subtitle" id="dynamicModalSubtitle"></div>
+                    </div>
+                    <div class="rune-modal-body">
+                        <div class="rune-modal-stats">
+                            <div class="rune-modal-stats-title">📊 ХАРАКТЕРИСТИКИ</div>
+                            <div id="dynamicModalStats"></div>
+                        </div>
+                        <div id="dynamicModalUniqueContainer" class="item-card-unique" style="display:none;">
+                            <div class="item-card-unique-title">✨ УНИКАЛЬНЫЕ ХАРАКТЕРИСТИКИ</div>
+                            <ul id="dynamicModalUniqueList"></ul>
+                        </div>
+                        <div class="rune-modal-description" id="dynamicModalDescription"></div>
+                    </div>
+                    <div class="rune-modal-footer">
+                        <button class="rune-modal-btn" onclick="closeSecretItemModalDynamic()">Закрыть</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Заполняем модалку данными
+        const iconEl = document.getElementById('dynamicModalIcon') || modal.querySelector('#dynamicModalIcon');
+        const titleEl = document.getElementById('dynamicModalTitle') || modal.querySelector('#dynamicModalTitle');
+        const subtitleEl = document.getElementById('dynamicModalSubtitle') || modal.querySelector('#dynamicModalSubtitle');
+        const statsContainer = document.getElementById('dynamicModalStats') || modal.querySelector('#dynamicModalStats');
+        const uniqueContainer = document.getElementById('dynamicModalUniqueContainer') || modal.querySelector('#dynamicModalUniqueContainer');
+        const uniqueList = document.getElementById('dynamicModalUniqueList') || modal.querySelector('#dynamicModalUniqueList');
+        const descEl = document.getElementById('dynamicModalDescription') || modal.querySelector('#dynamicModalDescription');
+        
+        if (iconEl) iconEl.style.backgroundPosition = `-${item.icon_col * 80}px -${item.icon_row * 80}px`;
+        if (titleEl) titleEl.innerText = item.name;
+        
+        const typeText = item.type === 'temporary' ? '⏳ Временное' : '♾️ Постоянное';
+        let expiryLine = '';
+        if (item.expiry_text) {
+            expiryLine = `<div style="font-size:12px; color:#ffaa44; margin-top:5px;">📅 Годность: ${escapeHtml(item.expiry_text)}</div>`;
+        }
+        if (subtitleEl) subtitleEl.innerHTML = `⭐ Уровень ${item.level} | ${typeText}${expiryLine}`;
+        
+        let descriptionHtml = '';
+        if (item.description) {
+            descriptionHtml += `<div style="margin-bottom:12px;">${escapeHtml(item.description)}</div>`;
+        }
+        if (item.how_to_get) {
+            descriptionHtml += `<div style="background:rgba(199,186,0,0.15); border-left:3px solid #c7ba00; padding:10px 12px; border-radius:8px; margin-top:8px;">
+                <div style="font-size:11px; color:#c7ba00; margin-bottom:5px;">🎯 СПОСОБ ПОЛУЧЕНИЯ:</div>
+                <div style="font-size:12px; color:#ffdd88;">${escapeHtml(item.how_to_get)}</div>
+            </div>`;
+        }
+        if (descEl) descEl.innerHTML = descriptionHtml || 'Описание отсутствует';
+        
+        // Рендер статистики
+        if (statsContainer && typeof renderStats === 'function') {
+            renderStats(item.stats || {}, statsContainer);
+        }
+        
+        // Уникальные характеристики
+        if (item.unique_stats && item.unique_stats.length > 0) {
+            if (uniqueContainer) uniqueContainer.style.display = 'block';
+            if (uniqueList) uniqueList.innerHTML = item.unique_stats.map(u => `<li>✨ ${escapeHtml(u)}</li>`).join('');
+        } else {
+            if (uniqueContainer) uniqueContainer.style.display = 'none';
+        }
+        
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (e) {
+        console.error('Ошибка открытия предмета:', e);
+        alert('❌ Ошибка при открытии предмета');
+    }
+}
 
+function closeSecretItemModalDynamic() {
+    const modal = document.getElementById('secretItemModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Делаем функцию глобальной
+window.openSecretItemModalById = openSecretItemModalById;
+window.closeSecretItemModalDynamic = closeSecretItemModalDynamic;
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ ====================
 
 // Запуск всех систем после загрузки DOM
@@ -840,3 +993,143 @@ window.toggleSound = toggleSound;
 window.openModalFromUrl = openModalFromUrl;
 window.getSecretItems = getSecretItems;
 window.getSecretSets = getSecretSets;
+
+// ==================== УНИВЕРСАЛЬНАЯ МОДАЛКА ДЛЯ ЛЮБОГО ПРЕДМЕТА ====================
+window.showItemModal = function(item, category) {
+    // Закрываем модалку квеста, если она открыта
+    const questModal = document.getElementById('questModal');
+    if (questModal && questModal.style.display === 'flex') {
+        questModal.style.display = 'none';
+    }
+    
+    // Создаём или получаем универсальную модалку
+    let modal = document.getElementById('universalItemModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'universalItemModal';
+        modal.className = 'rune-modal';
+        modal.style.display = 'none';
+        modal.style.zIndex = '10001';
+        modal.innerHTML = `
+            <div class="rune-modal-content">
+                <div class="rune-modal-header">
+                    <div class="rune-modal-close" onclick="window.closeUniversalItemModal()">✕</div>
+                    <div class="rune-modal-icon">
+                        <div class="item-icon shop-icon" id="universalModalIcon" style="width:80px;height:80px;background-image:url('img/shop.png');background-repeat:no-repeat;"></div>
+                    </div>
+                    <div class="rune-modal-title" id="universalModalTitle"></div>
+                    <div class="rune-modal-subtitle" id="universalModalSubtitle"></div>
+                </div>
+                <div class="rune-modal-body">
+                    <div class="rune-modal-stats">
+                        <div class="rune-modal-stats-title">ХАРАКТЕРИСТИКИ</div>
+                        <div id="universalModalStats"></div>
+                    </div>
+                    <div id="universalModalUniqueContainer" class="item-card-unique" style="display:none;">
+                        <div class="item-card-unique-title">УНИКАЛЬНЫЕ ХАРАКТЕРИСТИКИ</div>
+                        <ul id="universalModalUniqueList"></ul>
+                    </div>
+                    <div class="rune-modal-description" id="universalModalDescription"></div>
+                </div>
+                <div class="rune-modal-footer">
+                    <button class="rune-modal-btn" onclick="window.closeUniversalItemModal()">Закрыть</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Заполняем модалку
+    const iconEl = document.getElementById('universalModalIcon');
+    const titleEl = document.getElementById('universalModalTitle');
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    const statsContainer = document.getElementById('universalModalStats');
+    const uniqueContainer = document.getElementById('universalModalUniqueContainer');
+    const uniqueList = document.getElementById('universalModalUniqueList');
+    const descEl = document.getElementById('universalModalDescription');
+    
+    // Иконка
+    if (iconEl && item.icon_row !== undefined && item.icon_col !== undefined) {
+        iconEl.style.backgroundPosition = `-${item.icon_col * 80}px -${item.icon_row * 80}px`;
+    } else {
+        iconEl.style.backgroundPosition = '0px 0px';
+    }
+    
+    // Название
+    if (titleEl) titleEl.innerText = item.name || 'Без названия';
+    
+    // Уровень и тип
+    let levelText = item.level ? `Уровень ${item.level}` : '';
+    let typeText = '';
+    if (category === 'demon') typeText = 'Демон';
+    else if (category === 'rune') typeText = 'Руна';
+    else if (category === 'item') typeText = item.type || 'Предмет';
+    else if (category === 'secret') typeText = item.type === 'temporary' ? 'Временное' : 'Постоянное';
+    
+    if (subtitleEl) subtitleEl.innerHTML = [levelText, typeText].filter(Boolean).join(' | ');
+    
+    // Описание
+    if (descEl) descEl.innerHTML = item.description || 'Описание отсутствует';
+    
+    // Характеристики
+    if (statsContainer && typeof renderStats === 'function') {
+        renderStats(item.stats || {}, statsContainer);
+    } else if (statsContainer) {
+        statsContainer.innerHTML = '<div>Нет характеристик</div>';
+    }
+    
+    // Уникальные характеристики
+    if (item.unique_stats && item.unique_stats.length > 0) {
+        if (uniqueContainer) uniqueContainer.style.display = 'block';
+        if (uniqueList) uniqueList.innerHTML = item.unique_stats.map(u => `<li>${escapeHtml(u)}</li>`).join('');
+    } else {
+        if (uniqueContainer) uniqueContainer.style.display = 'none';
+    }
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+// Закрытие универсальной модалки
+window.closeUniversalItemModal = function() {
+    const modal = document.getElementById('universalItemModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+};
+
+// Получение предмета и открытие модалки
+window.openItemModalById = async function(itemId, category) {
+    let item = null;
+    
+    try {
+        switch(category) {
+            case 'secret':
+                item = await getSecretItemById(itemId);
+                break;
+            case 'demon':
+                item = await getDemonById(itemId);
+                break;
+            case 'rune':
+                item = await getMasterRuneById(itemId);
+                if (!item) item = await getDruidsRuneById(itemId);
+                if (!item) item = await getNakolkiById(itemId);
+                break;
+            case 'item':
+                item = await getItemById(itemId);
+                break;
+            default:
+                item = await getSecretItemById(itemId);
+        }
+    } catch(e) {
+        console.error('Ошибка:', e);
+        alert('Ошибка при получении предмета');
+        return;
+    }
+    
+    if (!item) {
+        alert('Предмет не найден');
+        return;
+    }
+    
+    window.showItemModal(item, category);
+};

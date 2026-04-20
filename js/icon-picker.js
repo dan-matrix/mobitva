@@ -31,7 +31,6 @@ function showIconPickerIcons(callback, buttonElement, options = {}) {
     
     document.body.appendChild(picker);
     
-    // Заполняем сетку иконок (12 колонок × 5 рядов = 60 иконок)
     const grid = picker.querySelector('.icon-picker-icons-grid');
     for(let row = 0; row < 5; row++) {
         for(let col = 0; col < 12; col++) {
@@ -70,7 +69,6 @@ function showIconPickerIcons(callback, buttonElement, options = {}) {
     let top = btnRect.bottom + 5;
     let left = btnRect.left;
     
-    // Проверяем чтобы пикер не вылезал за пределы экрана
     if(top + 400 > window.innerHeight) {
         top = btnRect.top - 405;
     }
@@ -96,4 +94,22 @@ function showIconPickerIcons(callback, buttonElement, options = {}) {
 
 function getIconClassFromCoords(row, col) {
     return `icon-${row}-${col}`;
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ИКОНОК ====================
+
+// Возвращает HTML строку иконки из icons.png по координатам ряда и колонки
+function getIconHtml(row, col, size = 28) {
+    return `<div class="icon-from-icons" style="--row:${row}; --col:${col}; width:${size}px; height:${size}px;"></div>`;
+}
+
+// Создаёт DOM элемент иконки
+function createIconElement(row, col, size = 28) {
+    const div = document.createElement('div');
+    div.className = 'icon-from-icons';
+    div.style.setProperty('--row', row);
+    div.style.setProperty('--col', col);
+    div.style.width = size + 'px';
+    div.style.height = size + 'px';
+    return div;
 }

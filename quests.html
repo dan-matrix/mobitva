@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Квесты - MMO</title>
+    <link rel="icon" type="image/png" href="img/books.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="wrapper">
+        <div id="adminPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👑</div>
+                    <div>
+                        <div class="admin-name" id="adminName"></div>
+                        <div class="admin-role">Администратор</div>
+                    </div>
+                    <div class="admin-badge">ADMIN</div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
+                    <button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button>
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+        <div id="userPanel" style="display:none;">
+            <div class="admin-panel">
+                <div class="admin-info">
+                    <div class="admin-avatar">👤</div>
+                    <div>
+                        <div class="admin-name" id="userName"></div>
+                        <div class="admin-role">Пользователь</div>
+                    </div>
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
+                    <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-wrapper">
+            <a href="https://mobitva.net" target="_blank">mobitva.net</a>
+            <div class="site-title">📜 КВЕСТЫ 📜</div>
+            <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
+        </div>
+        <div class="categories">
+            <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
+            <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
+        </div>
+
+        <div class="quest-filters">
+            <button class="filter-btn active" data-type="all">📦 Все</button>
+            <button class="filter-btn" data-type="story">📖 Сюжетные</button>
+            <button class="filter-btn" data-type="reward">💰 На плату</button>
+            <button class="filter-btn" data-type="item">🎁 На предметы</button>
+            <button class="filter-btn" data-type="daily">🌙 Ежедневные</button>
+            <button class="filter-btn" data-type="useless">💀 Бесполезные</button>
+        </div>
+
+        <div class="search-bar-enh" style="margin-bottom:20px;">
+            <input type="text" id="searchQuest" placeholder="🔍 Поиск квеста...">
+        </div>
+
+        <div class="quests-container" id="questsContainer"></div>
+    </div>
+
+    <div id="questModal" class="modal" style="display:none;">
+        <div class="quest-modal-content">
+            <div class="quest-modal-header">
+                <div class="quest-modal-name" id="questModalName"></div>
+                <div class="quest-modal-level-type">
+                    <span class="quest-modal-level" id="questModalLevel"></span>
+                    <span id="questModalType" class="quest-type-icons-modal"></span>
+                </div>
+                <div class="quest-modal-location" id="questModalLocation"></div>
+                <div><span class="quest-modal-repeat" id="questModalRepeat"></span></div>
+            </div>
+            <div class="quest-modal-section">
+                <div class="quest-modal-section-title" id="questModalDescTitle">📖 Описание</div>
+                <div class="quest-modal-section-content" id="questModalDesc"></div>
+            </div>
+            <div class="quest-modal-section">
+                <div class="quest-modal-section-title" id="questModalReqTitle">📋 Требования</div>
+                <div class="quest-modal-section-content" id="questModalRequirements"></div>
+            </div>
+            <div class="quest-modal-section">
+                <div class="quest-modal-section-title" id="questModalRewTitle">🎁 Награды</div>
+                <div class="quest-modal-section-content" id="questModalRewards"></div>
+            </div>
+            <div class="quest-modal-footer">
+                <button class="quest-modal-btn" onclick="closeQuestModal()">❌ Закрыть</button>
+                <button class="quest-modal-btn add-to-timer-btn" onclick="openAddTimerFromModal()">⏰ Добавить в таймер</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addTimerModal" class="modal" style="display:none;">
+        <div class="timer-add-modal">
+            <h3>⏰ Добавить в таймер</h3>
+            <select id="timerCharacterSelect">
+                <option value="">-- Выберите персонажа --</option>
+            </select>
+            <input type="text" id="timerQuestName" placeholder="Название квеста">
+            <div class="time-input-group">
+                <div class="time-field"><label>📅 Дни</label><input type="number" id="timerDays" min="0" value="0"></div>
+                <div class="time-field"><label>⏰ Часы</label><input type="number" id="timerHours" min="0" value="0"></div>
+                <div class="time-field"><label>⏱️ Минуты</label><input type="number" id="timerMinutes" min="0" value="0"></div>
+            </div>
+            <textarea id="timerNotes" rows="2" placeholder="📝 Заметки (необязательно)"></textarea>
+            <div class="modal-buttons" style="margin-top:15px;">
+                <button class="cat-btn" onclick="saveTimerFromQuest()">💾 Сохранить</button>
+                <button class="cat-btn" onclick="closeAddTimerModal()">❌ Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/db.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/icon-picker.js"></script>
+    <script src="js/statico.js"></script>
+    <style>
+        .quest-types-icons{display:flex;gap:6px;align-items:center;margin:0 10px;}
+        .type-icon{font-size:16px;cursor:pointer;transition:0.2s;opacity:0.8;}
+        .type-icon:hover{opacity:1;transform:scale(1.1);}
+        
+        .quest-type-icons-modal{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
+        .quest-type-icons-modal .type-icon{font-size:18px;background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:30px;border:1px solid rgba(199,186,0,0.3);}
+        
+        /* Иконки валют */
+        .reward-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px;background-size:contain;background-repeat:no-repeat;background-position:center;}
+        .reward-icon-plata{background-image:url('img/icon/plata.png');}
+        .reward-icon-zoloto{background-image:url('img/icon/zoloto.png');}
+        .reward-icon-serebro{background-image:url('img/icon/serebro.png');}
+        .reward-icon-med{background-image:url('img/icon/med.png');}
+        .reward-icon-exp{background-image:url('img/icon/exp.png');}
+    </style>
+    <script>
+        const currentUser = checkAuth();
+        if (!currentUser) window.location.href = 'auth.html';
+
+        let allQuests = [];
+        let currentTypeFilter = 'all';
+        let currentSearch = '';
+        let currentQuestForTimer = null;
+
+        async function loadQuests() {
+            allQuests = await getQuests();
+            filterAndRender();
+        }
+
+        function getTypeIcons(quest) {
+            let types = quest.types || [quest.type];
+            if (!Array.isArray(types)) types = [types];
+            
+            const icons = [];
+            for (const t of types) {
+                switch(t) {
+                    case 'story': icons.push('<span class="type-icon" title="Сюжетный">📖</span>'); break;
+                    case 'reward': icons.push('<span class="type-icon" title="На плату">💰</span>'); break;
+                    case 'item': icons.push('<span class="type-icon" title="На предметы">🎁</span>'); break;
+                    case 'daily': icons.push('<span class="type-icon" title="Ежедневный">🌙</span>'); break;
+                    case 'useless': icons.push('<span class="type-icon" title="Бесполезный">💀</span>'); break;
+                }
+            }
+            return icons.join('');
+        }
+
+        function getTypeClass(quest) {
+            let types = quest.types || [quest.type];
+            if (!Array.isArray(types)) types = [types];
+            const firstType = types[0];
+            switch(firstType) { 
+                case 'story': return 'type-story'; 
+                case 'reward': return 'type-reward'; 
+                case 'item': return 'type-item';
+                case 'daily': return 'type-daily';
+                case 'useless': return 'type-useless'; 
+                default: return ''; 
+            }
+        }
+
+        function getSectionColorClass(quest) {
+            let types = quest.types || [quest.type];
+            if (!Array.isArray(types)) types = [types];
+            const firstType = types[0];
+            switch(firstType) { 
+                case 'story': return 'quest-modal-section-title-story'; 
+                case 'reward': return 'quest-modal-section-title-reward'; 
+                case 'item': return 'quest-modal-section-title-item';
+                case 'daily': return 'quest-modal-section-title-daily';
+                case 'useless': return 'quest-modal-section-title-useless'; 
+                default: return ''; 
+            }
+        }
+
+        function getRepeatIcon(repeatType, cooldown) {
+            if (repeatType === 'once') return '🔒 Одноразовый';
+            if (repeatType === 'repeat') return `🔄 Повторяющийся | ⏱️ ${cooldown}`;
+            return '';
+        }
+
+        function filterAndRender() {
+            let filtered = [...allQuests];
+            if (currentTypeFilter !== 'all') {
+                filtered = filtered.filter(q => {
+                    let types = q.types || [q.type];
+                    if (!Array.isArray(types)) types = [types];
+                    return types.includes(currentTypeFilter);
+                });
+            }
+            if (currentSearch !== '') {
+                filtered = filtered.filter(q => q.name.toLowerCase().includes(currentSearch));
+            }
+            renderList(filtered);
+        }
+
+        function renderList(quests) {
+            const container = document.getElementById('questsContainer');
+            if (!container) return;
+            if (quests.length === 0) { 
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:#a0a0a0;">📭 Квестов не найдено</div>'; 
+                return; 
+            }
+            let html = '';
+            for (const q of quests) {
+                html += `<div class="quest-item">
+                            <div class="quest-info" onclick="openQuestModal(${q.id})">
+                                <div class="quest-name">📜 ${escapeHtml(q.name)}</div>
+                                <div class="quest-location">${getIconHtml(3, 10, 28)} ${escapeHtml(q.location_name)}</div>
+                            </div>
+                            <div class="quest-right">
+                                <div class="quest-level">⭐${q.level}</div>
+                                <div class="quest-types-icons">${getTypeIcons(q)}</div>
+                                <button class="quest-timer-btn" onclick="event.stopPropagation(); openAddTimerModal(${q.id})">⏰</button>
+                            </div>
+                        </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function openQuestModal(questId) {
+            const quest = allQuests.find(q => q.id === questId);
+            if (!quest) return;
+            currentQuestForTimer = quest;
+            const colorClass = getSectionColorClass(quest);
+            
+            document.getElementById('questModalName').innerText = quest.name;
+            document.getElementById('questModalLevel').innerHTML = '⭐ Уровень ' + quest.level;
+            document.getElementById('questModalType').innerHTML = getTypeIcons(quest);
+            document.getElementById('questModalType').className = 'quest-type-icons-modal';
+            document.getElementById('questModalLocation').innerHTML = getIconHtml(3, 10, 28) + ' ' + escapeHtml(quest.location_name);
+            document.getElementById('questModalRepeat').innerHTML = getRepeatIcon(quest.repeat_type, quest.cooldown);
+            document.getElementById('questModalDesc').innerHTML = escapeHtml(quest.description);
+            document.getElementById('questModalRequirements').innerHTML = escapeHtml(quest.requirements);
+            
+            document.getElementById('questModalDescTitle').className = 'quest-modal-section-title ' + colorClass;
+            document.getElementById('questModalReqTitle').className = 'quest-modal-section-title ' + colorClass;
+            document.getElementById('questModalRewTitle').className = 'quest-modal-section-title ' + colorClass;
+            
+            let rewardsHtml = '';
+            if (quest.rewards.exp > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-exp"></span>' + quest.rewards.exp + '</li>';
+            if (quest.rewards.fee > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-plata"></span>' + quest.rewards.fee + '</li>';
+            if (quest.rewards.gold > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-zoloto"></span>' + quest.rewards.gold + '</li>';
+            if (quest.rewards.silver > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-serebro"></span>' + quest.rewards.silver + '</li>';
+            if (quest.rewards.copper > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-med"></span>' + quest.rewards.copper + '</li>';
+            
+            if (quest.rewards.items && quest.rewards.items.length > 0) {
+                rewardsHtml += '<li>📦 Предметы:<ul>';
+                for (const item of quest.rewards.items) {
+                    const category = item.category || 'secret';
+                    rewardsHtml += '<li><span class="reward-item-link" onclick="event.stopPropagation(); window.openItemModalById(' + item.id + ', \'' + category + '\')">✨ ' + escapeHtml(item.name) + ' (' + (item.level || 0) + ' ур.)</span></li>';
+                }
+                rewardsHtml += '</ul></li>';
+            }
+            if (rewardsHtml === '') rewardsHtml = 'Нет наград';
+            
+            document.getElementById('questModalRewards').innerHTML = '<ul class="quest-modal-rewards-list">' + rewardsHtml + '</ul>';
+            document.getElementById('questModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeQuestModal() {
+            document.getElementById('questModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function openAddTimerFromModal() {
+            if (currentQuestForTimer) {
+                closeQuestModal();
+                setTimeout(function() { openAddTimerModal(currentQuestForTimer.id); }, 300);
+            } else { 
+                alert('❌ Ошибка: квест не выбран'); 
+            }
+        }
+
+        async function openAddTimerModal(questId) {
+            const quest = allQuests.find(q => q.id === questId);
+            if (!quest) return;
+            currentQuestForTimer = quest;
+            
+            const characters = await getUserCharacters(currentUser.login);
+            const select = document.getElementById('timerCharacterSelect');
+            select.innerHTML = '<option value="">-- Выберите персонажа --</option>';
+            for (const char of characters) {
+                select.innerHTML += '<option value="' + char.id + '">' + escapeHtml(char.name) + '</option>';
+            }
+            
+            document.getElementById('timerQuestName').value = quest.name;
+            const minutes = quest.cooldown_minutes || 0;
+            document.getElementById('timerDays').value = Math.floor(minutes / 1440);
+            document.getElementById('timerHours').value = Math.floor((minutes % 1440) / 60);
+            document.getElementById('timerMinutes').value = minutes % 60;
+            document.getElementById('timerNotes').value = '';
+            
+            document.getElementById('addTimerModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAddTimerModal() {
+            document.getElementById('addTimerModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        async function saveTimerFromQuest() {
+            const characterId = document.getElementById('timerCharacterSelect').value;
+            const questName = document.getElementById('timerQuestName').value.trim();
+            const days = parseInt(document.getElementById('timerDays').value) || 0;
+            const hours = parseInt(document.getElementById('timerHours').value) || 0;
+            const minutes = parseInt(document.getElementById('timerMinutes').value) || 0;
+            const notes = document.getElementById('timerNotes').value.trim();
+            
+            if (!characterId) { alert('❌ Выберите персонажа!'); return; }
+            if (!questName) { alert('❌ Введите название квеста!'); return; }
+            
+            const totalMs = (days * 86400000) + (hours * 3600000) + (minutes * 60000);
+            if (totalMs <= 0) { alert('❌ Укажите время больше 0!'); return; }
+            
+            const endTime = Date.now() + totalMs;
+            const { error } = await db.from('user_timers').insert([{ 
+                character_id: parseInt(characterId), 
+                quest_name: questName, 
+                end_time: endTime, 
+                duration: totalMs, 
+                notes: notes, 
+                is_active: true 
+            }]);
+            
+            if (error) { alert('❌ Ошибка при добавлении в таймер!'); return; }
+            alert('✅ Квест добавлен в таймер!');
+            closeAddTimerModal();
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentTypeFilter = btn.dataset.type;
+                filterAndRender();
+            });
+        });
+        
+        document.getElementById('searchQuest').addEventListener('input', function(e) {
+            currentSearch = e.target.value.toLowerCase().trim();
+            filterAndRender();
+        });
+        
+        loadQuests();
+        document.addEventListener('DOMContentLoaded', displayAdminPanel);
+    </script>
+</body>
+</html>

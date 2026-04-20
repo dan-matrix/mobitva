@@ -391,3 +391,32 @@ async function getSecretSetItemsBySetId(setId) {
     if (error) return [];
     return data;
 }
+
+// ==================== КВЕСТЫ ====================
+async function getQuests() { 
+    await ensureDb(); 
+    const { data, error } = await db.from('quests').select('*').order('sort_order'); 
+    if (error) return []; 
+    return data; 
+}
+
+async function getQuestById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('quests').select('*').eq('id', id); 
+    if (error) return null; 
+    return data ? data[0] : null; 
+}
+
+async function saveQuest(quest) { 
+    await ensureDb(); 
+    if (!quest.id) delete quest.id;
+    const { data, error } = await db.from('quests').upsert(quest).select(); 
+    if (error) return null; 
+    return data; 
+}
+
+async function deleteQuest(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('quests').delete().eq('id', id); 
+    return !error; 
+}

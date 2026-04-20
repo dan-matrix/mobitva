@@ -440,6 +440,17 @@
             min-width: 120px;
             padding: 10px 20px;
         }
+        /* Подсказка и быстрые кнопки */
+        .tooltip-icon{display:inline-block;width:18px;height:18px;background:#2a2420;border:1px solid #c7ba00;border-radius:50%;text-align:center;line-height:16px;font-size:12px;cursor:pointer;margin-left:8px;}
+        .tooltip-icon:hover{background:#c7ba00;color:#0d0a07;}
+        .quick-cooldown-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+        .quick-cooldown{background:#2a2420;border:1px solid #c7ba00;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;transition:0.2s;}
+        .quick-cooldown:hover{background:#c7ba00;color:#0d0a07;}
+        /* Типы квестов в админке */
+        .quest-types-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+        .quest-type-tag{background:#2a2420;border:1px solid #c7ba00;border-radius:30px;padding:6px 16px;font-size:12px;cursor:pointer;transition:0.2s;color:#e8dcc0;}
+        .quest-type-tag.active{background:#c7ba00;color:#0d0a07;border-color:#ffaa44;}
+        .quest-type-tag:hover{background:#3a342a;border-color:#ffaa44;}
     </style>
 </head>
 
@@ -458,6 +469,7 @@
 
         <div class="admin-tabs">
             <div class="admin-tab active" data-tab="items">📦 Предметы</div>
+            <div class="admin-tab" data-tab="quests">📜 Квесты</div>
             <div class="admin-tab" data-tab="demons">👹 Круги демона</div>
             <div class="admin-tab" data-tab="totems">🧪 Тотемы</div>
             <div class="admin-tab" data-tab="master">🏰 Мастер рун</div>
@@ -470,7 +482,8 @@
             <div class="admin-tab" data-tab="secret_sets">👘 Секретные сеты</div>
             <div class="admin-tab" data-tab="secret_set_items">📦 Предметы сетов</div>
         </div>
-
+        
+        <!-- Предметы -->
         <div id="itemsPanel" class="admin-panel-content active">
             <div class="search-bar">
                 <button class="add-btn" onclick="openModal('items')">➕ Добавить предмет</button>
@@ -484,7 +497,29 @@
                 <tbody id="itemsList"></tbody>
             </table>
         </div>
-
+        <!-- Квесты -->
+        <div id="questsPanel" class="admin-panel-content">
+            <button class="add-btn" onclick="openQuestAdminModal()">➕ Добавить квест</button>
+            <div class="search-bar" style="margin-top:10px;">
+                <input type="text" id="searchQuestsAdmin" placeholder="🔍 Поиск по названию...">
+                <button class="cat-btn" onclick="clearQuestsSearch()">🔄 Сброс</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Локация</th>
+                        <th>Уровень</th>
+                        <th>Тип</th>
+                        <th>Повтор</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="questsList"></tbody>
+            </table>
+        </div>
+        <!-- Демоны -->
         <div id="demonsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('demons')">➕ Добавить круг</button>
             <table class="admin-table">
@@ -492,7 +527,7 @@
                 <tbody id="demonsList"></tbody>
             </table>
         </div>
-
+        <!-- Тотемы -->
         <div id="totemsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('totems')">➕ Добавить тотем</button>
             <table class="admin-table">
@@ -500,7 +535,7 @@
                 <tbody id="totemsList"></tbody>
             </table>
         </div>
-
+        <!-- Руны мастера -->
         <div id="masterPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('master')">➕ Добавить руну</button>
             <table class="admin-table">
@@ -508,7 +543,7 @@
                 <tbody id="masterList"></tbody>
             </table>
         </div>
-
+        <!-- Руны фиглей -->
         <div id="druidsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('druids')">➕ Добавить руну</button>
             <table class="admin-table">
@@ -516,7 +551,7 @@
                 <tbody id="druidsList"></tbody>
             </table>
         </div>
-
+        <!-- Руны квестов -->
         <div id="nakolkiPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('nakolki')">➕ Добавить руну</button>
             <table class="admin-table">
@@ -524,7 +559,7 @@
                 <tbody id="nakolkiList"></tbody>
             </table>
         </div>
-
+        <!-- Усиления -->
         <div id="enhancementsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('enhancements')">➕ Добавить усиление</button>
             <div class="search-bar" style="margin-top:10px;">
@@ -536,7 +571,7 @@
                 <tbody id="enhancementsList"></tbody>
             </table>
         </div>
-
+        <!-- Новости -->
         <div id="newsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openModal('news')">➕ Добавить новость</button>
             <table class="admin-table">
@@ -544,14 +579,14 @@
                 <tbody id="newsList"></tbody>
             </table>
         </div>
-
+        <!-- Пользователи -->
         <div id="usersPanel" class="admin-panel-content">
             <table class="admin-table">
                 <thead><tr><th>ID</th><th>Логин</th><th>Email</th><th>Роль</th><th>Действия</th></tr></thead>
                 <tbody id="usersList"></tbody>
             </table>
         </div>
-
+        <!-- Сикрет items -->
         <div id="secret_itemsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openSecretItemAdminModal()">➕ Добавить секретную вещь</button>
             <div class="search-bar" style="margin-top:10px;">
@@ -563,7 +598,7 @@
                 <tbody id="secretItemsList"></tbody>
             </table>
         </div>
-
+        <!-- Сикрет sets -->
         <div id="secret_setsPanel" class="admin-panel-content">
             <button class="add-btn" onclick="openSetAdminModal()">➕ Добавить сет</button>
             <table class="admin-table">
@@ -571,7 +606,6 @@
                 <tbody id="secretSetsList"></tbody>
             </table>
         </div>
-
         <div id="secret_set_itemsPanel" class="admin-panel-content">
             <div class="form-group" style="margin-bottom:15px;">
                 <label>🎯 Выберите сет:</label>
@@ -586,7 +620,7 @@
             </table>
         </div>
     </div>
-
+    
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h2 id="modalTitle">Добавить</h2>
@@ -692,7 +726,88 @@
             <div class="modal-buttons"><button class="cat-btn" onclick="saveSetItemAdmin()">💾 Сохранить</button><button class="cat-btn" onclick="closeSetItemAdminModal()">❌ Отмена</button></div>
         </div>
     </div>
-
+    <!-- Модалка квеста (админка) -->
+    <div id="questAdminModal" class="modal">
+        <div class="modal-content">
+            <h2 id="questModalTitle">📜 Квест</h2>
+            <div class="form-group"><label>📝 Название</label><input type="text" id="questName"></div>
+            
+            <div class="form-row">
+                <div class="form-group"><label>📍 Локация</label><select id="questLocationId"></select></div>
+                <div class="form-group"><label>⭐ Уровень</label><input type="number" id="questLevel" value="1"></div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" id="questTypesGroup">
+                    <label>🎯 Типы квеста (можно выбрать несколько)</label>
+                        <div class="quest-types-tags" id="questTypesTags">
+                            <button type="button" class="quest-type-tag" data-type="story">📖 Сюжетный</button>
+                            <button type="button" class="quest-type-tag" data-type="reward">💰 На плату</button>
+                            <button type="button" class="quest-type-tag" data-type="item">🎁 На предметы</button>
+                            <button type="button" class="quest-type-tag" data-type="daily">🌙 Ежедневный</button>
+                            <button type="button" class="quest-type-tag" data-type="useless">💀 Бесполезный</button>
+                        </div>
+                </div>
+                <div class="form-group"><label>🔄 Повтор</label>
+                    <select id="questRepeatType">
+                        <option value="once">🔒 Одноразовый</option>
+                        
+                        <option value="daily">🌙 Ежедневный</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>⏱️ Текст отката <span class="tooltip-icon" onclick="showCooldownHelp()">❓</span></label>
+                    <input type="text" id="questCooldown" placeholder="2 часа, 24 часа, 7 дней">
+                </div>
+                <div class="form-group">
+                    <label>⏱️ Минуты отката</label>
+                    <input type="number" id="questCooldownMinutes" value="0">
+                    <div class="quick-cooldown-buttons">
+                        <button type="button" class="quick-cooldown" data-minutes="120">2ч</button>
+                        <button type="button" class="quick-cooldown" data-minutes="720">12ч</button>
+                        <button type="button" class="quick-cooldown" data-minutes="1440">1д</button>
+                        <button type="button" class="quick-cooldown" data-minutes="4320">3д</button>
+                        <button type="button" class="quick-cooldown" data-minutes="10080">7д</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group"><label>📖 Описание</label><textarea id="questDescription" rows="3"></textarea></div>
+            <div class="form-group"><label>📋 Требования</label><textarea id="questRequirements" rows="3"></textarea></div>
+            
+            <div class="form-group">
+                <label>НАГРАДЫ</label>
+                <div class="form-row">
+                    <div class="form-group"><label>Опыт</label><input type="number" id="questRewardExp" value="0"></div>
+                    <div class="form-group"><label>Плата</label><input type="number" id="questRewardFee" value="0"></div>
+                    <div class="form-group"><label>Золото</label><input type="number" id="questRewardGold" value="0"></div>
+                </div>
+                <div id="extraRewardsContainer" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group"><label>Серебро</label><input type="number" id="questRewardSilver" value="0"></div>
+                        <div class="form-group"><label>Медяк</label><input type="number" id="questRewardCopper" value="0"></div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:5px;">
+                    <button type="button" class="cat-btn" id="showSilverCopperBtn" style="padding:4px 12px; font-size:11px;">➕ Серебро/Медяк</button>
+                    <button type="button" id="hideSilverCopperBtn" style="display:none; padding:4px 12px; font-size:11px; background:#2a2420; border:1px solid #c7ba00; border-radius:8px; color:#e8dcc0;">➖ Скрыть</button>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                    <label>ПРЕДМЕТЫ В НАГРАДЕ</label>
+                    <div id="questRewardItemsContainer" class="unique-container"></div>
+                    <button type="button" class="add-stat-btn" onclick="addQuestRewardItemField()">Добавить предмет</button>
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="cat-btn" onclick="saveQuestAdmin()">💾 Сохранить</button>
+                <button class="cat-btn" onclick="closeQuestAdminModal()">❌ Отмена</button>
+            </div>
+        </div>
+    </div>
     <script src="js/db.js"></script>
     <script src="js/common.js"></script>
     <script src="js/admin.js"></script>
