@@ -55,7 +55,7 @@
         <div class="quest-filters">
             <button class="filter-btn active" data-type="all">📦 Все</button>
             <button class="filter-btn" data-type="story">📖 Сюжетные</button>
-            <button class="filter-btn" data-type="reward">💰 На плату</button>
+            <button class="filter-btn" data-type="reward">💰 у</button>
             <button class="filter-btn" data-type="item">🎁 На предметы</button>
             <button class="filter-btn" data-type="daily">🌙 Ежедневные</button>
             <button class="filter-btn" data-type="blago">✨ Благо</button>
@@ -261,7 +261,7 @@
             
             let rewardsHtml = '';
             if (quest.rewards.exp > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-exp"></span> Опыт: ' + quest.rewards.exp + '</li>';
-            if (quest.rewards.fee > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-plata"></span> На плату: ' + quest.rewards.fee + '</li>';
+            if (quest.rewards.fee > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-plata"></span> Плата: ' + quest.rewards.fee + '</li>';
             if (quest.rewards.gold > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-zoloto"></span> Золото: ' + quest.rewards.gold + '</li>';
             if (quest.rewards.silver > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-serebro"></span> Серебро: ' + quest.rewards.silver + '</li>';
             if (quest.rewards.copper > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-med"></span> Медяк: ' + quest.rewards.copper + '</li>';
