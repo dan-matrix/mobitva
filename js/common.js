@@ -994,6 +994,7 @@ window.openModalFromUrl = openModalFromUrl;
 window.getSecretItems = getSecretItems;
 window.getSecretSets = getSecretSets;
 
+
 // ==================== УНИВЕРСАЛЬНАЯ МОДАЛКА ДЛЯ ЛЮБОГО ПРЕДМЕТА ====================
 window.showItemModal = function(item, category) {
     // Закрываем модалку квеста, если она открыта
@@ -1002,7 +1003,6 @@ window.showItemModal = function(item, category) {
         questModal.style.display = 'none';
     }
     
-    // Создаём или получаем универсальную модалку
     let modal = document.getElementById('universalItemModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -1065,6 +1065,7 @@ window.showItemModal = function(item, category) {
     else if (category === 'rune') typeText = 'Руна';
     else if (category === 'item') typeText = item.type || 'Предмет';
     else if (category === 'secret') typeText = item.type === 'temporary' ? 'Временное' : 'Постоянное';
+    else if (category === 'enhancement') typeText = item.type === 'temporary' ? 'Временное усиление' : 'Постоянное усиление';
     
     if (subtitleEl) subtitleEl.innerHTML = [levelText, typeText].filter(Boolean).join(' | ');
     
@@ -1090,14 +1091,13 @@ window.showItemModal = function(item, category) {
     document.body.style.overflow = 'hidden';
 };
 
-// Закрытие универсальной модалки
 window.closeUniversalItemModal = function() {
     const modal = document.getElementById('universalItemModal');
     if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
 };
 
-// Получение предмета и открытие модалки
+// ==================== ПОЛУЧЕНИЕ ПРЕДМЕТА И ОТКРЫТИЕ МОДАЛКИ ====================
 window.openItemModalById = async function(itemId, category) {
     let item = null;
     
@@ -1116,6 +1116,9 @@ window.openItemModalById = async function(itemId, category) {
                 break;
             case 'item':
                 item = await getItemById(itemId);
+                break;
+            case 'enhancement':
+                item = await getEnhancementById(itemId);
                 break;
             default:
                 item = await getSecretItemById(itemId);

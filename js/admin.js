@@ -1184,19 +1184,37 @@ function renderQuestsAdmin(data) {
     
     let html = '';
     for (const q of data) {
-        const typeText = q.type === 'story' ? 'Сюжетный' : q.type === 'reward' ? 'Плата' : q.type === 'item' ? 'Предмет' : 'Бесполезный';
-        const repeatText = q.repeat_type === 'once' ? 'Одноразовый' : q.repeat_type === 'repeat' ? 'Повторный' : 'Ежедневный';
+        // Получаем все типы квеста
+        let questTypes = q.types || [q.type];
+        if (!Array.isArray(questTypes)) questTypes = [questTypes];
+        
+        const typeIcons = [];
+        for (const t of questTypes) {
+            switch(t) {
+                case 'story': typeIcons.push('📖'); break;
+                case 'reward': typeIcons.push('💰'); break;
+                case 'item': typeIcons.push('🎁'); break;
+                case 'daily': typeIcons.push('🌙'); break;
+                case 'blago': typeIcons.push('✨'); break;
+                case 'useless': typeIcons.push('💀'); break;
+                default: typeIcons.push('❓');
+            }
+        }
+        const typeText = typeIcons.join(' ');
+        
+        const repeatText = q.repeat_type === 'once' ? '🔒' : q.repeat_type === 'repeat' ? '🔄' : '🌙';
+        
         html += `<tr>
             <td>${q.id}</td>
-            <td>${escapeHtml(q.name)}</td>
-            <td>${escapeHtml(q.location_name)}</td>
-            <td>${q.level}</td>
-            <td>${typeText}</td>
-            <td>${repeatText}</td>
+            <td>${escapeHtml(q.name)}</div></td>
+            <td>${escapeHtml(q.location_name)}</div></td>
+            <td>${q.level}</div></td>
+            <td>${typeText}</div></td>
+            <td>${repeatText}</div></td>
             <td>
                 <button class="edit-btn" onclick="openQuestAdminModal(${q.id})">✏️</button>
                 <button class="delete-btn" onclick="deleteQuestAdmin(${q.id})">🗑️</button>
-            </td>
+            </div></td>
         </tr>`;
     }
     tbody.innerHTML = html;
@@ -1242,16 +1260,17 @@ function addQuestRewardItemField(value = null) {
     div.style.marginBottom = '8px';
     
     div.innerHTML = `
-        <select class="reward-item-category" style="width:130px; padding:8px; background:#0d0a07; border:1px solid #c7ba00; border-radius:6px; color:#e8dcc0;">
-            <option value="secret">Секретные вещи</option>
-            <option value="demon">Демоны</option>
-            <option value="rune">Руны</option>
-            <option value="item">Предметы</option>
+        <select class="reward-item-category" style="width:140px; padding:8px; background:#0d0a07; border:1px solid #c7ba00; border-radius:6px; color:#e8dcc0;">
+            <option value="secret">🔮 Секретные вещи</option>
+            <option value="demon">👹 Демоны</option>
+            <option value="rune">🏰 Руны</option>
+            <option value="item">📦 Предметы</option>
+            <option value="enhancement">⚡ Усиления</option>
         </select>
         <select class="reward-item-select" style="flex:2; padding:8px; background:#0d0a07; border:1px solid #c7ba00; border-radius:6px; color:#e8dcc0;">
             <option value="">-- Выберите предмет --</option>
         </select>
-        <button onclick="this.parentElement.remove()" style="background:#ff4444; border:none; border-radius:6px; padding:6px 12px; color:white; cursor:pointer;">Удалить</button>
+        <button onclick="this.parentElement.remove()" style="background:#ff4444; border:none; border-radius:6px; padding:6px 12px; color:white; cursor:pointer;">🗑️</button>
     `;
     container.appendChild(div);
     
@@ -1287,12 +1306,21 @@ async function loadItemsByCategory(category, select, selectedValue = null) {
         case 'item':
             items = await getItems();
             break;
+        case 'enhancement':
+            items = await getEnhancements();
+            break;
     }
     
     select.innerHTML = '<option value="">-- Выберите предмет --</option>';
     for (const item of items) {
         const selected = selectedValue && selectedValue.id === item.id ? 'selected' : '';
-        select.innerHTML += `<option value="${item.id}" data-name="${escapeHtml(item.name)}" data-level="${item.level || 0}" data-category="${category}" ${selected}>${escapeHtml(item.name)} (${item.level || 0} ур.)</option>`;
+        let level = item.level || 0;
+        let name = item.name;
+        if (category === 'enhancement') {
+            const typeText = item.type === 'temporary' ? '⏳' : '♾️';
+            name = `${typeText} ${item.name}`;
+        }
+        select.innerHTML += `<option value="${item.id}" data-name="${escapeHtml(item.name)}" data-level="${level}" data-category="${category}" ${selected}>${escapeHtml(name)} (${level} ур.)</option>`;
     }
 }
 
@@ -1330,6 +1358,7 @@ async function openQuestAdminModal(id = null) {
     document.getElementById('questCooldownMinutes').value = quest ? (quest.cooldown_minutes || 0) : 0;
     document.getElementById('questDescription').value = quest ? (quest.description || '') : '';
     document.getElementById('questRequirements').value = quest ? (quest.requirements || '') : '';
+    document.getElementById('questComment').value = quest ? (quest.comment || '') : '';
     document.getElementById('questRewardExp').value = quest?.rewards?.exp || 0;
     document.getElementById('questRewardFee').value = quest?.rewards?.fee || 0;
     document.getElementById('questRewardGold').value = quest?.rewards?.gold || 0;
@@ -1470,6 +1499,7 @@ async function saveQuestAdmin() {
         cooldown_minutes: parseInt(document.getElementById('questCooldownMinutes').value) || 0,
         description: document.getElementById('questDescription').value,
         requirements: document.getElementById('questRequirements').value,
+        comment: document.getElementById('questComment').value,
         rewards: rewards
     };
     if (currentQuestId) quest.id = currentQuestId;

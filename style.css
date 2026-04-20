@@ -848,6 +848,8 @@ body{padding:10px;}
 .type-icon:hover{opacity:1;transform:scale(1.1);}
 .quest-type-icons-modal{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .quest-type-icons-modal .type-icon{font-size:18px;background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:30px;border:1px solid rgba(199,186,0,0.3);}
+.type-blago{background:rgba(255,215,0,0.2);color:#ffd700;border:1px solid #ffd700;}
+.quest-modal-section-title-blago{color:#ffd700;text-shadow:0 0 5px rgba(255,215,0,0.3);}
 /* Иконки валют */
 .reward-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px;background-size:contain;background-repeat:no-repeat;background-position:center;}
 .reward-icon-plata{background-image:url('img/icon/plata.png');}

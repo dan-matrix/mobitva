@@ -58,6 +58,7 @@
             <button class="filter-btn" data-type="reward">💰 На плату</button>
             <button class="filter-btn" data-type="item">🎁 На предметы</button>
             <button class="filter-btn" data-type="daily">🌙 Ежедневные</button>
+            <button class="filter-btn" data-type="blago">✨ Благо</button>
             <button class="filter-btn" data-type="useless">💀 Бесполезные</button>
         </div>
 
@@ -86,6 +87,10 @@
             <div class="quest-modal-section">
                 <div class="quest-modal-section-title" id="questModalReqTitle">📋 Требования</div>
                 <div class="quest-modal-section-content" id="questModalRequirements"></div>
+            </div>
+            <div class="quest-modal-section">
+                <div class="quest-modal-section-title" id="questModalCommentTitle">📝 Дополнительно</div>
+                <div class="quest-modal-section-content" id="questModalComment"></div>
             </div>
             <div class="quest-modal-section">
                 <div class="quest-modal-section-title" id="questModalRewTitle">🎁 Награды</div>
@@ -123,22 +128,6 @@
     <script src="js/common.js"></script>
     <script src="js/icon-picker.js"></script>
     <script src="js/statico.js"></script>
-    <style>
-        .quest-types-icons{display:flex;gap:6px;align-items:center;margin:0 10px;}
-        .type-icon{font-size:16px;cursor:pointer;transition:0.2s;opacity:0.8;}
-        .type-icon:hover{opacity:1;transform:scale(1.1);}
-        
-        .quest-type-icons-modal{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
-        .quest-type-icons-modal .type-icon{font-size:18px;background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:30px;border:1px solid rgba(199,186,0,0.3);}
-        
-        /* Иконки валют */
-        .reward-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px;background-size:contain;background-repeat:no-repeat;background-position:center;}
-        .reward-icon-plata{background-image:url('img/icon/plata.png');}
-        .reward-icon-zoloto{background-image:url('img/icon/zoloto.png');}
-        .reward-icon-serebro{background-image:url('img/icon/serebro.png');}
-        .reward-icon-med{background-image:url('img/icon/med.png');}
-        .reward-icon-exp{background-image:url('img/icon/exp.png');}
-    </style>
     <script>
         const currentUser = checkAuth();
         if (!currentUser) window.location.href = 'auth.html';
@@ -258,23 +247,35 @@
             document.getElementById('questModalRepeat').innerHTML = getRepeatIcon(quest.repeat_type, quest.cooldown);
             document.getElementById('questModalDesc').innerHTML = escapeHtml(quest.description);
             document.getElementById('questModalRequirements').innerHTML = escapeHtml(quest.requirements);
+            document.getElementById('questModalComment').innerHTML = escapeHtml(quest.comment || '');
+            
+            if (quest.comment) {
+                document.getElementById('questModalCommentTitle').style.display = 'flex';
+            } else {
+                document.getElementById('questModalCommentTitle').style.display = 'none';
+            }
             
             document.getElementById('questModalDescTitle').className = 'quest-modal-section-title ' + colorClass;
             document.getElementById('questModalReqTitle').className = 'quest-modal-section-title ' + colorClass;
             document.getElementById('questModalRewTitle').className = 'quest-modal-section-title ' + colorClass;
             
             let rewardsHtml = '';
-            if (quest.rewards.exp > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-exp"></span>' + quest.rewards.exp + '</li>';
-            if (quest.rewards.fee > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-plata"></span>' + quest.rewards.fee + '</li>';
-            if (quest.rewards.gold > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-zoloto"></span>' + quest.rewards.gold + '</li>';
-            if (quest.rewards.silver > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-serebro"></span>' + quest.rewards.silver + '</li>';
-            if (quest.rewards.copper > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-med"></span>' + quest.rewards.copper + '</li>';
+            if (quest.rewards.exp > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-exp"></span> Опыт: ' + quest.rewards.exp + '</li>';
+            if (quest.rewards.fee > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-plata"></span> На плату: ' + quest.rewards.fee + '</li>';
+            if (quest.rewards.gold > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-zoloto"></span> Золото: ' + quest.rewards.gold + '</li>';
+            if (quest.rewards.silver > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-serebro"></span> Серебро: ' + quest.rewards.silver + '</li>';
+            if (quest.rewards.copper > 0) rewardsHtml += '<li><span class="reward-icon reward-icon-med"></span> Медяк: ' + quest.rewards.copper + '</li>';
             
             if (quest.rewards.items && quest.rewards.items.length > 0) {
                 rewardsHtml += '<li>📦 Предметы:<ul>';
                 for (const item of quest.rewards.items) {
                     const category = item.category || 'secret';
-                    rewardsHtml += '<li><span class="reward-item-link" onclick="event.stopPropagation(); window.openItemModalById(' + item.id + ', \'' + category + '\')">✨ ' + escapeHtml(item.name) + ' (' + (item.level || 0) + ' ур.)</span></li>';
+                    let itemIcon = '✨';
+                    if (category === 'enhancement') itemIcon = '⚡';
+                    else if (category === 'demon') itemIcon = '👹';
+                    else if (category === 'rune') itemIcon = '🏰';
+                    else if (category === 'item') itemIcon = '📦';
+                    rewardsHtml += '<li><span class="reward-item-link" onclick="event.stopPropagation(); window.openItemModalById(' + item.id + ', \'' + category + '\')">' + itemIcon + ' ' + escapeHtml(item.name) + ' (' + (item.level || 0) + ' ур.)</span></li>';
                 }
                 rewardsHtml += '</ul></li>';
             }
