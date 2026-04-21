@@ -30,28 +30,166 @@ async function ensureDb() {
 
 ensureDb();
 
+// ==================== КЕШИРОВАНИЕ ====================
+const cache = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+async function getCachedOrFetch(key, fetchFunction) {
+    const now = Date.now();
+    if (cache[key] && (now - cache[key].timestamp) < CACHE_TTL) {
+        console.log(`📦 Кеш: ${key}`);
+        return cache[key].data;
+    }
+    console.log(`🔄 Запрос в БД: ${key}`);
+    const data = await fetchFunction();
+    cache[key] = { data: data, timestamp: now };
+    return data;
+}
+
+function invalidateCache(key) {
+    if (cache[key]) {
+        delete cache[key];
+        console.log(`🗑️ Кеш очищен: ${key}`);
+    }
+}
+
 // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
-async function getItems() { await ensureDb(); const { data, error } = await db.from('items').select('*').order('level'); if (error) return []; return data; }
-async function getDemons() { await ensureDb(); const { data, error } = await db.from('demons').select('*').order('sort_order'); if (error) return []; return data; }
-async function getTotems() { await ensureDb(); const { data, error } = await db.from('totems').select('*').order('sort_order'); if (error) return []; return data; }
-async function getMasterRunes() { await ensureDb(); const { data, error } = await db.from('runes_master').select('*').order('sort_order'); if (error) return []; return data; }
-async function getDruidsRunes() { await ensureDb(); const { data, error } = await db.from('runes_druids').select('*').order('sort_order'); if (error) return []; return data; }
-async function getNews() { await ensureDb(); const { data, error } = await db.from('news').select('*').order('date', { ascending: false }); if (error) return []; return data; }
-async function getUsers() { await ensureDb(); const { data, error } = await db.from('users').select('*'); if (error) return []; return data; }
+async function getItems() { 
+    await ensureDb(); 
+    return getCachedOrFetch('items', async () => {
+        const { data, error } = await db.from('items').select('*').order('level'); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getDemons() { 
+    await ensureDb(); 
+    return getCachedOrFetch('demons', async () => {
+        const { data, error } = await db.from('demons').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getTotems() { 
+    await ensureDb(); 
+    return getCachedOrFetch('totems', async () => {
+        const { data, error } = await db.from('totems').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getMasterRunes() { 
+    await ensureDb(); 
+    return getCachedOrFetch('master_runes', async () => {
+        const { data, error } = await db.from('runes_master').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getDruidsRunes() { 
+    await ensureDb(); 
+    return getCachedOrFetch('druids_runes', async () => {
+        const { data, error } = await db.from('runes_druids').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getNews() { 
+    await ensureDb(); 
+    return getCachedOrFetch('news', async () => {
+        const { data, error } = await db.from('news').select('*').order('date', { ascending: false }); 
+        if (error) return []; 
+        return data; 
+    });
+}
+async function getUsers() { 
+    await ensureDb(); 
+    return getCachedOrFetch('users', async () => {
+        const { data, error } = await db.from('users').select('*'); 
+        if (error) return []; 
+        return data; 
+    });
+}
 
-async function saveItem(item) { await ensureDb(); const { data, error } = await db.from('items').upsert(item).select(); if (error) return null; return data; }
-async function saveDemon(demon) { await ensureDb(); const { data, error } = await db.from('demons').upsert(demon).select(); if (error) return null; return data; }
-async function saveTotem(totem) { await ensureDb(); const { data, error } = await db.from('totems').upsert(totem).select(); if (error) return null; return data; }
-async function saveMasterRune(rune) { await ensureDb(); const { data, error } = await db.from('runes_master').upsert(rune).select(); if (error) return null; return data; }
-async function saveDruidsRune(rune) { await ensureDb(); const { data, error } = await db.from('runes_druids').upsert(rune).select(); if (error) return null; return data; }
-async function saveNewsItem(news) { await ensureDb(); const { data, error } = await db.from('news').upsert(news).select(); if (error) return null; return data; }
+async function saveItem(item) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('items').upsert(item).select(); 
+    if (error) return null; 
+    invalidateCache('items');
+    return data; 
+}
+async function saveDemon(demon) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('demons').upsert(demon).select(); 
+    if (error) return null; 
+    invalidateCache('demons');
+    return data; 
+}
+async function saveTotem(totem) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('totems').upsert(totem).select(); 
+    if (error) return null; 
+    invalidateCache('totems');
+    return data; 
+}
+async function saveMasterRune(rune) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('runes_master').upsert(rune).select(); 
+    if (error) return null; 
+    invalidateCache('master_runes');
+    return data; 
+}
+async function saveDruidsRune(rune) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('runes_druids').upsert(rune).select(); 
+    if (error) return null; 
+    invalidateCache('druids_runes');
+    return data; 
+}
+async function saveNewsItem(news) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('news').upsert(news).select(); 
+    if (error) return null; 
+    invalidateCache('news');
+    return data; 
+}
 
-async function deleteItemById(id) { await ensureDb(); const { error } = await db.from('items').delete().eq('id', id); return !error; }
-async function deleteDemonById(id) { await ensureDb(); const { error } = await db.from('demons').delete().eq('id', id); return !error; }
-async function deleteTotemById(id) { await ensureDb(); const { error } = await db.from('totems').delete().eq('id', id); return !error; }
-async function deleteMasterRuneById(id) { await ensureDb(); const { error } = await db.from('runes_master').delete().eq('id', id); return !error; }
-async function deleteDruidsRuneById(id) { await ensureDb(); const { error } = await db.from('runes_druids').delete().eq('id', id); return !error; }
-async function deleteNewsById(id) { await ensureDb(); const { error } = await db.from('news').delete().eq('id', id); return !error; }
+async function deleteItemById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('items').delete().eq('id', id); 
+    if (!error) invalidateCache('items');
+    return !error; 
+}
+async function deleteDemonById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('demons').delete().eq('id', id); 
+    if (!error) invalidateCache('demons');
+    return !error; 
+}
+async function deleteTotemById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('totems').delete().eq('id', id); 
+    if (!error) invalidateCache('totems');
+    return !error; 
+}
+async function deleteMasterRuneById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('runes_master').delete().eq('id', id); 
+    if (!error) invalidateCache('master_runes');
+    return !error; 
+}
+async function deleteDruidsRuneById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('runes_druids').delete().eq('id', id); 
+    if (!error) invalidateCache('druids_runes');
+    return !error; 
+}
+async function deleteNewsById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('news').delete().eq('id', id); 
+    if (!error) invalidateCache('news');
+    return !error; 
+}
 
 // ==================== АВТОРИЗАЦИЯ ====================
 async function loginUser(login, password) { 
@@ -69,6 +207,7 @@ async function registerUser(login, password, email) {
     const role = count === 0 ? 'admin' : 'user'; 
     const { error } = await db.from('users').insert([{ login, password, email, role, name: login }]); 
     if (error) return { success: false, message: '❌ Ошибка регистрации' }; 
+    invalidateCache('users');
     return { success: true, message: role === 'admin' ? '✅ Вы стали АДМИНИСТРАТОРОМ!' : '✅ Регистрация успешна!' }; 
 }
 
@@ -87,30 +226,86 @@ async function initAuth() {
         const users = await getUsers(); 
         if (users && users.length > 0) { 
             await db.from('users').update({ role: 'admin' }).eq('id', users[0].id); 
+            invalidateCache('users');
         } 
     } 
 }
 
 // ========== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ АДМИНКИ ==========
-async function getItemById(id) { await ensureDb(); const { data, error } = await db.from('items').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
-async function getDemonById(id) { await ensureDb(); const { data, error } = await db.from('demons').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
-async function getTotemById(id) { await ensureDb(); const { data, error } = await db.from('totems').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
-async function getMasterRuneById(id) { await ensureDb(); const { data, error } = await db.from('runes_master').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
-async function getDruidsRuneById(id) { await ensureDb(); const { data, error } = await db.from('runes_druids').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
-async function getNewsById(id) { await ensureDb(); const { data, error } = await db.from('news').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
+async function getItemById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('items').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
+async function getDemonById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('demons').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
+async function getTotemById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('totems').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
+async function getMasterRuneById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('runes_master').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
+async function getDruidsRuneById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('runes_druids').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
+async function getNewsById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('news').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
 
 // ========== ФУНКЦИИ ДЛЯ КВЕСТОВЫХ РУН (nakolki) ==========
-async function getNakolki() { await ensureDb(); const { data, error } = await db.from('nakolki').select('*').order('sort_order'); if(error) return []; return data; }
-async function saveNakolki(item) { await ensureDb(); const { data, error } = await db.from('nakolki').upsert(item).select(); if(error) return null; return data; }
-async function deleteNakolkiById(id) { await ensureDb(); const { error } = await db.from('nakolki').delete().eq('id', id); return !error; }
-async function getNakolkiById(id) { await ensureDb(); const { data, error } = await db.from('nakolki').select('*').eq('id', id); if(error) return null; return data ? data[0] : null; }
+async function getNakolki() { 
+    await ensureDb(); 
+    return getCachedOrFetch('nakolki', async () => {
+        const { data, error } = await db.from('nakolki').select('*').order('sort_order'); 
+        if(error) return []; 
+        return data; 
+    });
+}
+async function saveNakolki(item) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('nakolki').upsert(item).select(); 
+    if(error) return null; 
+    invalidateCache('nakolki');
+    return data; 
+}
+async function deleteNakolkiById(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('nakolki').delete().eq('id', id); 
+    if (!error) invalidateCache('nakolki');
+    return !error; 
+}
+async function getNakolkiById(id) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('nakolki').select('*').eq('id', id); 
+    if(error) return null; 
+    return data ? data[0] : null; 
+}
 
 // ========== УСИЛЕНИЯ (ENHANCEMENTS) ==========
 async function getEnhancements() { 
     await ensureDb(); 
-    const { data, error } = await db.from('enhancements').select('*').order('sort_order'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch('enhancements', async () => {
+        const { data, error } = await db.from('enhancements').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getEnhancementById(id) { 
@@ -124,35 +319,81 @@ async function saveEnhancement(item) {
     await ensureDb(); 
     const { data, error } = await db.from('enhancements').upsert(item).select(); 
     if (error) return null; 
+    invalidateCache('enhancements');
     return data; 
 }
 
 async function deleteEnhancementById(id) { 
     await ensureDb(); 
     const { error } = await db.from('enhancements').delete().eq('id', id); 
+    if (!error) invalidateCache('enhancements');
     return !error; 
 }
 
 // ========== ЛИЧНЫЙ КАБИНЕТ (ПЕРСОНАЖИ И ТАЙМЕРЫ) ==========
-async function getUserCharacters(userId) { await ensureDb(); const { data, error } = await db.from('user_characters').select('*').eq('user_id', userId); if(error) return []; return data; }
-async function addCharacter(userId, name) { await ensureDb(); const { data, error } = await db.from('user_characters').insert([{ user_id: userId, name }]).select(); if(error) return null; return data[0]; }
-async function deleteCharacter(id) { await ensureDb(); const { error } = await db.from('user_characters').delete().eq('id', id); return !error; }
+async function getUserCharacters(userId) { 
+    await ensureDb(); 
+    return getCachedOrFetch(`user_characters_${userId}`, async () => {
+        const { data, error } = await db.from('user_characters').select('*').eq('user_id', userId); 
+        if(error) return []; 
+        return data; 
+    });
+}
+async function addCharacter(userId, name) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('user_characters').insert([{ user_id: userId, name }]).select(); 
+    if(error) return null; 
+    invalidateCache(`user_characters_${userId}`);
+    return data[0]; 
+}
+async function deleteCharacter(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('user_characters').delete().eq('id', id); 
+    return !error; 
+}
 
-async function getCharacterTimers(characterId) { await ensureDb(); const { data, error } = await db.from('user_timers').select('*').eq('character_id', characterId); if(error) return []; return data; }
-async function addTimer(characterId, questName, endTime, duration) { await ensureDb(); const { data, error } = await db.from('user_timers').insert([{ character_id: characterId, quest_name: questName, end_time: endTime, duration: duration }]).select(); if(error) return null; return data[0]; }
-async function updateTimer(id, questName, endTime, duration) { await ensureDb(); const { error } = await db.from('user_timers').update({ quest_name: questName, end_time: endTime, duration: duration }).eq('id', id); return !error; }
-async function deleteTimer(id) { await ensureDb(); const { error } = await db.from('user_timers').delete().eq('id', id); return !error; }
-async function toggleTimerActive(id, isActive) { await ensureDb(); const { error } = await db.from('user_timers').update({ is_active: isActive }).eq('id', id); return !error; }
+async function getCharacterTimers(characterId) { 
+    await ensureDb(); 
+    return getCachedOrFetch(`character_timers_${characterId}`, async () => {
+        const { data, error } = await db.from('user_timers').select('*').eq('character_id', characterId); 
+        if(error) return []; 
+        return data; 
+    });
+}
+async function addTimer(characterId, questName, endTime, duration) { 
+    await ensureDb(); 
+    const { data, error } = await db.from('user_timers').insert([{ character_id: characterId, quest_name: questName, end_time: endTime, duration: duration }]).select(); 
+    if(error) return null; 
+    invalidateCache(`character_timers_${characterId}`);
+    return data[0]; 
+}
+async function updateTimer(id, questName, endTime, duration) { 
+    await ensureDb(); 
+    const { error } = await db.from('user_timers').update({ quest_name: questName, end_time: endTime, duration: duration }).eq('id', id); 
+    return !error; 
+}
+async function deleteTimer(id) { 
+    await ensureDb(); 
+    const { error } = await db.from('user_timers').delete().eq('id', id); 
+    return !error; 
+}
+async function toggleTimerActive(id, isActive) { 
+    await ensureDb(); 
+    const { error } = await db.from('user_timers').update({ is_active: isActive }).eq('id', id); 
+    return !error; 
+}
 
 // ========== КАРТА ==========
 async function getMapLocations() { 
     await ensureDb(); 
-    const { data, error } = await db.from('map_locations').select('*').order('id'); 
-    if (error) {
-        console.error('getMapLocations error:', error);
-        return []; 
-    }
-    return data; 
+    return getCachedOrFetch('map_locations', async () => {
+        const { data, error } = await db.from('map_locations').select('*').order('id'); 
+        if (error) {
+            console.error('getMapLocations error:', error);
+            return []; 
+        }
+        return data; 
+    });
 }
 
 async function saveMapLocation(location) { 
@@ -162,50 +403,59 @@ async function saveMapLocation(location) {
         console.error('saveMapLocation error:', error);
         return null; 
     }
+    invalidateCache('map_locations');
     return data; 
 }
 
 async function deleteMapLocation(id) { 
     await ensureDb(); 
     const { error } = await db.from('map_locations').delete().eq('id', id); 
+    if (!error) invalidateCache('map_locations');
     return !error; 
 }
 
 async function getMapConnections() { 
     await ensureDb(); 
-    const { data, error } = await db.from('map_connections').select('*'); 
-    if (error) {
-        console.error('getMapConnections error:', error);
-        return []; 
-    }
-    return data; 
+    return getCachedOrFetch('map_connections', async () => {
+        const { data, error } = await db.from('map_connections').select('*'); 
+        if (error) {
+            console.error('getMapConnections error:', error);
+            return []; 
+        }
+        return data; 
+    });
 }
 
 async function saveMapConnection(connection) { 
     await ensureDb(); 
     const { data, error } = await db.from('map_connections').upsert(connection).select(); 
     if (error) return null; 
+    invalidateCache('map_connections');
     return data; 
 }
 
 async function deleteMapConnection(id) { 
     await ensureDb(); 
     const { error } = await db.from('map_connections').delete().eq('id', id); 
+    if (!error) invalidateCache('map_connections');
     return !error; 
 }
 
 async function deleteMapConnectionsByLocationId(locationId) { 
     await ensureDb(); 
     const { error } = await db.from('map_connections').delete().or(`from_id.eq.${locationId},to_id.eq.${locationId}`); 
+    if (!error) invalidateCache('map_connections');
     return !error; 
 }
 
 // ========== МОБЫ ДЛЯ ЛОКАЦИЙ ==========
 async function getLocationMobs(locationId) { 
     await ensureDb(); 
-    const { data, error } = await db.from('location_mobs').select('*').eq('location_id', locationId).order('level'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch(`location_mobs_${locationId}`, async () => {
+        const { data, error } = await db.from('location_mobs').select('*').eq('location_id', locationId).order('level'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getLocationMobById(id) { 
@@ -219,6 +469,7 @@ async function saveLocationMob(mob) {
     await ensureDb(); 
     const { data, error } = await db.from('location_mobs').upsert(mob).select(); 
     if (error) return null; 
+    invalidateCache(`location_mobs_${mob.location_id}`);
     return data; 
 }
 
@@ -231,6 +482,7 @@ async function deleteLocationMob(id) {
 async function deleteLocationMobsByLocationId(locationId) { 
     await ensureDb(); 
     const { error } = await db.from('location_mobs').delete().eq('location_id', locationId); 
+    if (!error) invalidateCache(`location_mobs_${locationId}`);
     return !error; 
 }
 
@@ -295,9 +547,11 @@ async function clearTimerHistory(characterId = null) {
 // ==================== СЕКРЕТНЫЕ ВЕЩИ ====================
 async function getSecretItems() { 
     await ensureDb(); 
-    const { data, error } = await db.from('secret_items_new').select('*').order('id'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch('secret_items', async () => {
+        const { data, error } = await db.from('secret_items_new').select('*').order('id'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getSecretItemById(id) { 
@@ -314,21 +568,25 @@ async function saveSecretItem(item) {
     }
     const { data, error } = await db.from('secret_items_new').upsert(item).select(); 
     if (error) return null; 
+    invalidateCache('secret_items');
     return data; 
 }
 
 async function deleteSecretItem(id) { 
     await ensureDb(); 
     const { error } = await db.from('secret_items_new').delete().eq('id', id); 
+    if (!error) invalidateCache('secret_items');
     return !error; 
 }
 
 // ==================== СЕКРЕТНЫЕ СЕТЫ ====================
 async function getSecretSets() { 
     await ensureDb(); 
-    const { data, error } = await db.from('secret_sets_new').select('*').order('id'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch('secret_sets', async () => {
+        const { data, error } = await db.from('secret_sets_new').select('*').order('id'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getSecretSetById(id) { 
@@ -345,21 +603,25 @@ async function saveSecretSet(set) {
     }
     const { data, error } = await db.from('secret_sets_new').upsert(set).select(); 
     if (error) return null; 
+    invalidateCache('secret_sets');
     return data; 
 }
 
 async function deleteSecretSet(id) { 
     await ensureDb(); 
     const { error } = await db.from('secret_sets_new').delete().eq('id', id); 
+    if (!error) invalidateCache('secret_sets');
     return !error; 
 }
 
 // ==================== ПРЕДМЕТЫ В СЕТАХ ====================
 async function getSecretSetItems(setId) { 
     await ensureDb(); 
-    const { data, error } = await db.from('secret_set_items_new').select('*').eq('set_id', setId).order('id'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch(`secret_set_items_${setId}`, async () => {
+        const { data, error } = await db.from('secret_set_items_new').select('*').eq('set_id', setId).order('id'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getSecretSetItemById(id) { 
@@ -376,6 +638,7 @@ async function saveSecretSetItem(item) {
     }
     const { data, error } = await db.from('secret_set_items_new').upsert(item).select(); 
     if (error) return null; 
+    invalidateCache(`secret_set_items_${item.set_id}`);
     return data; 
 }
 
@@ -395,9 +658,11 @@ async function getSecretSetItemsBySetId(setId) {
 // ==================== КВЕСТЫ ====================
 async function getQuests() { 
     await ensureDb(); 
-    const { data, error } = await db.from('quests').select('*').order('sort_order'); 
-    if (error) return []; 
-    return data; 
+    return getCachedOrFetch('quests', async () => {
+        const { data, error } = await db.from('quests').select('*').order('sort_order'); 
+        if (error) return []; 
+        return data; 
+    });
 }
 
 async function getQuestById(id) { 
@@ -412,11 +677,13 @@ async function saveQuest(quest) {
     if (!quest.id) delete quest.id;
     const { data, error } = await db.from('quests').upsert(quest).select(); 
     if (error) return null; 
+    invalidateCache('quests');
     return data; 
 }
 
 async function deleteQuest(id) { 
     await ensureDb(); 
     const { error } = await db.from('quests').delete().eq('id', id); 
+    if (!error) invalidateCache('quests');
     return !error; 
 }
