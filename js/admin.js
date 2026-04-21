@@ -1360,6 +1360,7 @@ async function openQuestAdminModal(id = null) {
     document.getElementById('questRequirements').value = quest ? (quest.requirements || '') : '';
     document.getElementById('questComment').value = quest ? (quest.comment || '') : '';
     document.getElementById('questRewardExp').value = quest?.rewards?.exp || 0;
+    document.getElementById('questRewardGlory').value = quest?.rewards?.glory || 0;
     document.getElementById('questRewardFee').value = quest?.rewards?.fee || 0;
     document.getElementById('questRewardGold').value = quest?.rewards?.gold || 0;
     document.getElementById('questRewardSilver').value = quest?.rewards?.silver || 0;
@@ -1386,10 +1387,11 @@ async function openQuestAdminModal(id = null) {
         }
     });
     
-    // Инициализируем обработчики для тегов
     initQuestTypesTags();
     
-    // Предметы в награде
+    // Загрузка этапов
+    loadQuestStages(quest?.stages || []);
+    
     const container = document.getElementById('questRewardItemsContainer');
     if (container) {
         container.innerHTML = '';
@@ -1399,16 +1401,14 @@ async function openQuestAdminModal(id = null) {
         }
     }
     
-    // Скрываем/показываем серебро и медяки
     const extraContainer = document.getElementById('extraRewardsContainer');
     const showBtn = document.getElementById('showSilverCopperBtn');
     const hideBtn = document.getElementById('hideSilverCopperBtn');
     
     if (extraContainer && showBtn && hideBtn) {
-        const hasSilver = (quest?.rewards?.silver || 0) > 0;
-        const hasCopper = (quest?.rewards?.copper || 0) > 0;
+        const hasExtra = (quest?.rewards?.silver || 0) > 0 || (quest?.rewards?.copper || 0) > 0;
         
-        if (hasSilver || hasCopper) {
+        if (hasExtra) {
             extraContainer.style.display = 'block';
             showBtn.style.display = 'none';
             hideBtn.style.display = 'inline-block';
@@ -1430,7 +1430,6 @@ async function openQuestAdminModal(id = null) {
         };
     }
     
-    // Быстрые кнопки отката
     setTimeout(() => {
         document.querySelectorAll('.quick-cooldown').forEach(btn => {
             btn.onclick = function() {
@@ -1471,7 +1470,6 @@ async function saveQuestAdmin() {
     const location = mapLocationsList.find(l => l.id == locationId);
     const locationName = location ? location.name : '';
     
-    // Собираем типы из активных кнопок-тегов
     const types = [];
     document.querySelectorAll('.quest-type-tag.active').forEach(tag => {
         types.push(tag.dataset.type);
@@ -1480,6 +1478,7 @@ async function saveQuestAdmin() {
     
     const rewards = {
         exp: parseInt(document.getElementById('questRewardExp').value) || 0,
+        glory: parseInt(document.getElementById('questRewardGlory').value) || 0,
         fee: parseInt(document.getElementById('questRewardFee').value) || 0,
         gold: parseInt(document.getElementById('questRewardGold').value) || 0,
         silver: parseInt(document.getElementById('questRewardSilver').value) || 0,
@@ -1500,6 +1499,7 @@ async function saveQuestAdmin() {
         description: document.getElementById('questDescription').value,
         requirements: document.getElementById('questRequirements').value,
         comment: document.getElementById('questComment').value,
+        stages: collectQuestStages(),
         rewards: rewards
     };
     if (currentQuestId) quest.id = currentQuestId;
@@ -1540,4 +1540,74 @@ function initQuestTypesTags() {
 
 function tagClickHandler() {
     this.classList.toggle('active');
+}
+// Добавление этапа
+function addQuestStage(stageData = null) {
+    const container = document.getElementById('questStagesContainer');
+    if (!container) return;
+    
+    const stageIndex = container.children.length;
+    const div = document.createElement('div');
+    div.className = 'stage-item';
+    div.setAttribute('data-stage-index', stageIndex);
+    
+    div.innerHTML = `
+        <div class="stage-header">
+            <span class="stage-title">📌 ЭТАП ${stageIndex + 1}</span>
+            <button type="button" class="stage-remove" onclick="this.closest('.stage-item').remove(); renumberStages();">🗑️ Удалить</button>
+        </div>
+        <div class="form-group">
+            <label>📖 Описание этапа</label>
+            <textarea class="stage-description" rows="2" placeholder="Что нужно сделать на этом этапе...">${stageData ? escapeHtml(stageData.description) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>📋 Требования этапа</label>
+            <textarea class="stage-requirements" rows="2" placeholder="Требования для выполнения этапа...">${stageData ? escapeHtml(stageData.requirements) : ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label>📝 Комментарий этапа</label>
+            <textarea class="stage-comment" rows="2" placeholder="Дополнительная информация...">${stageData ? escapeHtml(stageData.comment) : ''}</textarea>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+// Перенумерация этапов после удаления
+function renumberStages() {
+    const container = document.getElementById('questStagesContainer');
+    if (!container) return;
+    
+    const stages = container.querySelectorAll('.stage-item');
+    stages.forEach((stage, idx) => {
+        stage.setAttribute('data-stage-index', idx);
+        const titleSpan = stage.querySelector('.stage-title');
+        if (titleSpan) titleSpan.innerHTML = `📌 ЭТАП ${idx + 1}`;
+    });
+}
+
+// Сбор данных этапов
+function collectQuestStages() {
+    const stages = [];
+    document.querySelectorAll('#questStagesContainer .stage-item').forEach(stage => {
+        const description = stage.querySelector('.stage-description')?.value.trim() || '';
+        const requirements = stage.querySelector('.stage-requirements')?.value.trim() || '';
+        const comment = stage.querySelector('.stage-comment')?.value.trim() || '';
+        
+        if (description || requirements || comment) {
+            stages.push({ description, requirements, comment });
+        }
+    });
+    return stages;
+}
+
+// Загрузка этапов в модалку
+function loadQuestStages(stages) {
+    const container = document.getElementById('questStagesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    if (stages && stages.length > 0) {
+        for (const stage of stages) {
+            addQuestStage(stage);
+        }
+    }
 }

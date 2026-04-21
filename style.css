@@ -263,7 +263,7 @@ body{font-family:Tahoma,Arial;background:#0d0a07;color:#e8dcc0;font-size:13px;pa
 .stat-icon-уровень{--row:1;--col:11;}
 
 /* ===== ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ АДМИНКИ ===== */
-.modal-content{width:700px!important;max-width:90%!important;max-height:85vh!important;}
+.modal-content{width:750px!important;max-width:90%!important;max-height:85vh!important;}
 .stats-editor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
 .stat-editor-field{background:#0d0a07;border:1px solid #c7ba00;border-radius:8px;padding:8px;}
 .stat-editor-field label{font-size:11px;color:#c7ba00;display:block;margin-bottom:4px;}
@@ -794,6 +794,9 @@ body{padding:10px;}
 .type-story{background:rgba(255,200,50,0.2);color:#ffdd88;border:1px solid #ffcc44;}
 .type-reward{background:rgba(35,96,114,0.822);color:#ccccdd;border:1px solid #aaaacc;}
 .type-item{background:rgba(68,255,136,0.2);color:#88ffaa;border:1px solid #44ff88;}
+.type-daily{background:rgba(68,170,255,0.2);color:#88aaff;border:1px solid #44aaff;}
+.type-blago{background:rgba(255,215,0,0.2);color:#ffd700;border:1px solid #ffd700;}
+.type-glory{background:rgba(255,215,0,0.2);color:#ffd700;border:1px solid #ffd700;}
 .type-useless{background:rgba(136,136,136,0.2);color:#aaaaaa;border:1px solid #888;}
 .quest-timer-btn{background:rgba(0,0,0,0.4);border:1px solid #c7ba00;border-radius:30px;padding:6px 10px;cursor:pointer;transition:0.2s;color:#c7ba00;font-size:14px;display:flex;align-items:center;gap:4px;flex-shrink:0;}
 .quest-timer-btn:hover{background:#c7ba00;color:#0d0a07;}
@@ -802,7 +805,6 @@ body{padding:10px;}
 .filter-btn.active{background:#c7ba00;color:#0d0a07;}
 .filter-btn:hover{background:#c7ba00;color:#0d0a07;}
 
-/* МОДАЛКА КВЕСТА - НОВЫЙ ДИЗАЙН */
 .quest-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border-radius:28px;width:580px;max-width:90%;animation:modalFadeIn 0.3s ease;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,0.5);}
 .quest-modal-header{text-align:center;padding:30px 25px 25px;position:relative;background:linear-gradient(135deg,#2a2420,#1a1612);}
 .quest-modal-header::after{content:'';position:absolute;bottom:0;left:15%;width:70%;height:3px;background:linear-gradient(90deg,transparent,#c7ba00,#ffdd88,#c7ba00,transparent);border-radius:3px;}
@@ -812,16 +814,18 @@ body{padding:10px;}
 .quest-modal-location{font-size:14px;color:#c7ba00;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;background:rgba(0,0,0,0.3);padding:6px 16px;border-radius:40px;width:fit-content;margin-left:auto;margin-right:auto;}
 .quest-modal-repeat{font-size:12px;color:#88ffaa;margin-top:5px;background:rgba(68,255,136,0.15);display:inline-block;padding:5px 18px;border-radius:40px;border:1px solid rgba(68,255,136,0.3);}
 .quest-modal-section{padding:18px 25px;border-bottom:1px solid rgba(199,186,0,0.08);transition:0.2s;}
-.quest-modal-section:hover{background:rgba(199,186,0,0.03);}
 .quest-modal-section:last-of-type{border-bottom:none;}
 .quest-modal-section-title{font-size:15px;font-weight:bold;margin-bottom:12px;display:flex;align-items:center;gap:10px;letter-spacing:1px;}
 .quest-modal-section-title-story{color:#ffcc44;text-shadow:0 0 5px rgba(255,204,68,0.3);}
 .quest-modal-section-title-reward{color:#ebea9f;text-shadow:0 0 5px rgba(235,234,159,0.3);}
 .quest-modal-section-title-item{color:#44ff88;text-shadow:0 0 5px rgba(68,255,136,0.3);}
+.quest-modal-section-title-daily{color:#88aaff;text-shadow:0 0 5px rgba(68,170,255,0.3);}
+.quest-modal-section-title-blago{color:#ffd700;text-shadow:0 0 5px rgba(255,215,0,0.3);}
+.quest-modal-section-title-glory{color:#ffd700;text-shadow:0 0 5px rgba(255,215,0,0.3);}
 .quest-modal-section-title-useless{color:#aaa;}
 .quest-modal-section-content{font-size:13px;color:#d0d0d0;line-height:1.6;padding:5px 0;}
 .quest-modal-rewards-list{margin:0;padding-left:20px;}
-.quest-modal-rewards-list li{margin:6px 0;color:#c0c0c0;}
+.quest-modal-rewards-list li{margin:6px 0;color:#c0c0c0;display:flex;align-items:center;gap:8px;}
 .quest-modal-rewards-list li::marker{color:#c7ba00;}
 .reward-item-link{color:#ffdd88;cursor:pointer;text-decoration:none;border-bottom:1px dashed #c7ba00;transition:0.2s;}
 .reward-item-link:hover{color:#c7ba00;border-bottom-color:#ffdd88;}
@@ -830,8 +834,7 @@ body{padding:10px;}
 .quest-modal-btn:hover{background:#c7ba00;color:#0d0a07;transform:scale(1.02);box-shadow:0 0 15px rgba(199,186,0,0.4);}
 .add-to-timer-btn{border-color:#44ff88;color:#88ffaa;}
 .add-to-timer-btn:hover{background:#44ff88;color:#0d0a07;box-shadow:0 0 15px rgba(68,255,136,0.4);}
-.type-daily{background:rgba(68,170,255,0.2);color:#88aaff;border:1px solid #44aaff;}
-.quest-modal-section-title-daily{color:#88aaff;text-shadow:0 0 5px rgba(68,170,255,0.3);}
+
 .timer-add-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #44ff88;border-radius:24px;width:400px;max-width:90%;padding:25px;}
 .timer-add-modal h3{color:#ffdd88;text-align:center;margin-bottom:20px;font-size:22px;}
 .timer-add-modal select,.timer-add-modal input{width:100%;padding:10px;background:#0d0a07;border:1px solid #c7ba00;border-radius:12px;color:#e8dcc0;margin-bottom:15px;}
@@ -840,24 +843,45 @@ body{padding:10px;}
 .time-field{flex:1;text-align:center;}
 .time-field label{display:block;font-size:10px;color:#c7ba00;margin-bottom:4px;}
 .time-field input{width:100%;padding:8px;text-align:center;}
-.item-card-unique-list,#universalModalUniqueList{margin:0;padding-left:20px;word-wrap:break-word;overflow-wrap:break-word;}
-.item-card-unique-list li,#universalModalUniqueList li{margin:3px 0;white-space:normal;word-break:break-word;}
-.item-card-unique,#universalModalUniqueContainer{max-width:100%;overflow-x:hidden;}
+
 .quest-types-icons{display:flex;gap:6px;align-items:center;margin:0 10px;}
 .type-icon{font-size:16px;cursor:pointer;transition:0.2s;opacity:0.8;}
 .type-icon:hover{opacity:1;transform:scale(1.1);}
 .quest-type-icons-modal{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .quest-type-icons-modal .type-icon{font-size:18px;background:rgba(0,0,0,0.3);padding:4px 10px;border-radius:30px;border:1px solid rgba(199,186,0,0.3);}
-.type-blago{background:rgba(255,215,0,0.2);color:#ffd700;border:1px solid #ffd700;}
-.quest-modal-section-title-blago{color:#ffd700;text-shadow:0 0 5px rgba(255,215,0,0.3);}
-/* Иконки валют */
-.reward-icon{width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px;background-size:contain;background-repeat:no-repeat;background-position:center;}
+
+.reward-icon{width:20px;height:20px;display:inline-block;background-size:contain;background-repeat:no-repeat;background-position:center;flex-shrink:0;vertical-align:middle;margin-right:6px;}
 .reward-icon-plata{background-image:url('img/icon/plata.png');}
 .reward-icon-zoloto{background-image:url('img/icon/zoloto.png');}
 .reward-icon-serebro{background-image:url('img/icon/serebro.png');}
 .reward-icon-med{background-image:url('img/icon/med.png');}
 .reward-icon-exp{background-image:url('img/icon/exp.png');}
+.reward-icon-glory{background-image:url('img/icon/glory.png');}
 
-/* Выравнивание строк наград */
 .quest-modal-rewards-list li{display:flex;align-items:center;gap:8px;margin:8px 0;}
-.quest-modal-rewards-list li .reward-icon{flex-shrink:0;margin-right:0;}
+.quest-modal-rewards-list li .reward-icon{width:20px;height:20px;}
+
+/* Модалка этапов */
+#stagesModal .quest-modal-content{max-width:550px;background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:28px;box-shadow:0 0 30px rgba(199,186,0,0.3);}
+#stagesModal .quest-modal-header{background:linear-gradient(135deg,#2a2420,#1a1612);border-bottom:2px solid rgba(199,186,0,0.3);padding:20px;}
+#stagesModal .quest-modal-name{font-size:24px;background:linear-gradient(135deg,#ffdd88,#d4b35a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px;}
+#stagesCounter{font-size:14px;color:#c7ba00;background:rgba(0,0,0,0.4);display:inline-block;padding:4px 16px;border-radius:40px;}
+#stagesModal .quest-modal-section{background:rgba(0,0,0,0.2);min-height:200px;padding:20px;}
+#stagesContent{font-size:14px;line-height:1.6;color:#e0d0b0;}
+#stagesContent strong{color:#c7ba00;display:block;margin-bottom:6px;}
+.stage-nav-btn{background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid #c7ba00;border-radius:40px;padding:8px 18px;cursor:pointer;color:#c7ba00;font-size:13px;font-weight:bold;transition:0.2s;}
+.stage-nav-btn:hover{background:#c7ba00;color:#0d0a07;transform:scale(1.02);}
+.stages-dots-container{display:flex;justify-content:center;gap:10px;margin:15px 0 20px;}
+.stage-dot{width:10px;height:10px;background:#555;border-radius:50%;cursor:pointer;transition:0.2s;}
+.stage-dot.active{background:#c7ba00;width:24px;border-radius:10px;}
+.stage-dot:hover{background:#c7ba00;transform:scale(1.2);}
+
+
+/* Кастомный скроллбар с отступами от углов */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;margin:18px 0 18px 0;}
+::-webkit-scrollbar-track:horizontal{margin:0 18px 0 18px;}
+::-webkit-scrollbar-thumb{background: #c7ba00; border-radius:20px;background-clip:padding-box;border:2px solid transparent;}
+::-webkit-scrollbar-thumb:hover{background: #ffdd88; border:2px solid transparent;}
+::-webkit-scrollbar-button{display:none;width:0;height:0;}
+::-webkit-scrollbar-corner{background:transparent;}
