@@ -32,12 +32,45 @@ ensureDb();
 
 // ==================== КЕШИРОВАНИЕ ====================
 const cache = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+const CACHE_TTL = {
+    // Почти статические данные (7 дней)
+    items: 7 * 24 * 60 * 60 * 1000,
+    demons: 7 * 24 * 60 * 60 * 1000,
+    totems: 7 * 24 * 60 * 60 * 1000,
+    master_runes: 7 * 24 * 60 * 60 * 1000,
+    druids_runes: 7 * 24 * 60 * 60 * 1000,
+    nakolki: 7 * 24 * 60 * 60 * 1000,
+    secret_items: 7 * 24 * 60 * 60 * 1000,
+    secret_sets: 7 * 24 * 60 * 60 * 1000,
+    enhancements: 7 * 24 * 60 * 60 * 1000,
+    
+    // Карта (3 дня)
+    map_locations: 3 * 24 * 60 * 60 * 1000,
+    map_connections: 3 * 24 * 60 * 60 * 1000,
+    
+    // Квесты (1 день)
+    quests: 24 * 60 * 60 * 1000,
+    
+    // Новости (1 день)
+    news: 24 * 60 * 60 * 1000,
+    
+    // Пользователи (без кеша — всегда свежие)
+    users: 0,
+    user_characters: 0,
+    character_timers: 0
+};
 
-async function getCachedOrFetch(key, fetchFunction) {
+async function getCachedOrFetch(key, fetchFunction, ttlKey = null) {
     const now = Date.now();
-    if (cache[key] && (now - cache[key].timestamp) < CACHE_TTL) {
-        console.log(`📦 Кеш: ${key}`);
+    const ttl = ttlKey && CACHE_TTL[ttlKey] !== undefined ? CACHE_TTL[ttlKey] : 5 * 60 * 1000;
+    
+    if (ttl === 0) {
+        return await fetchFunction();
+    }
+    
+    if (cache[key] && (now - cache[key].timestamp) < ttl) {
+        const remaining = Math.round((ttl - (now - cache[key].timestamp)) / 1000 / 60 / 60 / 24);
+        console.log(`📦 Кеш: ${key} (ещё ${remaining} дней)`);
         return cache[key].data;
     }
     console.log(`🔄 Запрос в БД: ${key}`);
@@ -53,6 +86,18 @@ function invalidateCache(key) {
     }
 }
 
+// Очистка кеша персонажа при любых изменениях таймеров
+function invalidateCharacterCache(characterId) {
+    invalidateCache(`character_timers_${characterId}`);
+}
+
+async function getTimerCharacterId(timerId) {
+    await ensureDb();
+    const { data, error } = await db.from('user_timers').select('character_id').eq('id', timerId).single();
+    if (error || !data) return null;
+    return data.character_id;
+}
+
 // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
 async function getItems() { 
     await ensureDb(); 
@@ -60,7 +105,7 @@ async function getItems() {
         const { data, error } = await db.from('items').select('*').order('level'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'items');
 }
 async function getDemons() { 
     await ensureDb(); 
@@ -68,7 +113,7 @@ async function getDemons() {
         const { data, error } = await db.from('demons').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'demons');
 }
 async function getTotems() { 
     await ensureDb(); 
@@ -76,7 +121,7 @@ async function getTotems() {
         const { data, error } = await db.from('totems').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'totems');
 }
 async function getMasterRunes() { 
     await ensureDb(); 
@@ -84,7 +129,7 @@ async function getMasterRunes() {
         const { data, error } = await db.from('runes_master').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'master_runes');
 }
 async function getDruidsRunes() { 
     await ensureDb(); 
@@ -92,7 +137,7 @@ async function getDruidsRunes() {
         const { data, error } = await db.from('runes_druids').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'druids_runes');
 }
 async function getNews() { 
     await ensureDb(); 
@@ -100,7 +145,7 @@ async function getNews() {
         const { data, error } = await db.from('news').select('*').order('date', { ascending: false }); 
         if (error) return []; 
         return data; 
-    });
+    }, 'news');
 }
 async function getUsers() { 
     await ensureDb(); 
@@ -108,7 +153,7 @@ async function getUsers() {
         const { data, error } = await db.from('users').select('*'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'users');
 }
 
 async function saveItem(item) { 
@@ -276,7 +321,7 @@ async function getNakolki() {
         const { data, error } = await db.from('nakolki').select('*').order('sort_order'); 
         if(error) return []; 
         return data; 
-    });
+    }, 'nakolki');
 }
 async function saveNakolki(item) { 
     await ensureDb(); 
@@ -305,7 +350,7 @@ async function getEnhancements() {
         const { data, error } = await db.from('enhancements').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'enhancements');
 }
 
 async function getEnhancementById(id) { 
@@ -331,19 +376,17 @@ async function deleteEnhancementById(id) {
 }
 
 // ========== ЛИЧНЫЙ КАБИНЕТ (ПЕРСОНАЖИ И ТАЙМЕРЫ) ==========
+// БЕЗ КЕША — всегда свежие данные
 async function getUserCharacters(userId) { 
     await ensureDb(); 
-    return getCachedOrFetch(`user_characters_${userId}`, async () => {
-        const { data, error } = await db.from('user_characters').select('*').eq('user_id', userId); 
-        if(error) return []; 
-        return data; 
-    });
+    const { data, error } = await db.from('user_characters').select('*').eq('user_id', userId); 
+    if(error) return []; 
+    return data; 
 }
 async function addCharacter(userId, name) { 
     await ensureDb(); 
     const { data, error } = await db.from('user_characters').insert([{ user_id: userId, name }]).select(); 
     if(error) return null; 
-    invalidateCache(`user_characters_${userId}`);
     return data[0]; 
 }
 async function deleteCharacter(id) { 
@@ -352,19 +395,19 @@ async function deleteCharacter(id) {
     return !error; 
 }
 
+// Таймеры — без кеша, всегда свежие
 async function getCharacterTimers(characterId) { 
     await ensureDb(); 
-    return getCachedOrFetch(`character_timers_${characterId}`, async () => {
-        const { data, error } = await db.from('user_timers').select('*').eq('character_id', characterId); 
-        if(error) return []; 
-        return data; 
-    });
+    const { data, error } = await db.from('user_timers').select('*').eq('character_id', characterId); 
+    if(error) return []; 
+    return data; 
 }
+
+// При изменениях — очищаем кеш персонажа (если бы он был)
 async function addTimer(characterId, questName, endTime, duration) { 
     await ensureDb(); 
     const { data, error } = await db.from('user_timers').insert([{ character_id: characterId, quest_name: questName, end_time: endTime, duration: duration }]).select(); 
     if(error) return null; 
-    invalidateCache(`character_timers_${characterId}`);
     return data[0]; 
 }
 async function updateTimer(id, questName, endTime, duration) { 
@@ -393,7 +436,7 @@ async function getMapLocations() {
             return []; 
         }
         return data; 
-    });
+    }, 'map_locations');
 }
 
 async function saveMapLocation(location) { 
@@ -423,7 +466,7 @@ async function getMapConnections() {
             return []; 
         }
         return data; 
-    });
+    }, 'map_connections');
 }
 
 async function saveMapConnection(connection) { 
@@ -551,7 +594,7 @@ async function getSecretItems() {
         const { data, error } = await db.from('secret_items_new').select('*').order('id'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'secret_items');
 }
 
 async function getSecretItemById(id) { 
@@ -586,7 +629,7 @@ async function getSecretSets() {
         const { data, error } = await db.from('secret_sets_new').select('*').order('id'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'secret_sets');
 }
 
 async function getSecretSetById(id) { 
@@ -662,7 +705,7 @@ async function getQuests() {
         const { data, error } = await db.from('quests').select('*').order('sort_order'); 
         if (error) return []; 
         return data; 
-    });
+    }, 'quests');
 }
 
 async function getQuestById(id) { 
