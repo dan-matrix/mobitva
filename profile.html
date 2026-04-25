@@ -679,15 +679,10 @@
                 return;
             }
 
-            const { error: nameError } = await db.from('user_characters').update({ name: newName }).eq('id', charId);
-            if (nameError) {
-                alert('❌ Ошибка при обновлении имени!');
+            const success = await updateCharacter(charId, { name: newName, color_scheme: newScheme });
+            if (!success) {
+                alert('❌ Ошибка при обновлении персонажа!');
                 return;
-            }
-            
-            const { error: schemeError } = await db.from('user_characters').update({ color_scheme: newScheme }).eq('id', charId);
-            if (schemeError) {
-                console.error('Ошибка обновления схемы:', schemeError);
             }
 
             closeEditCharModal();
