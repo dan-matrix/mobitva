@@ -277,37 +277,47 @@ function initHotkeys() {
 
 let notifications = [];
 
+// Добавление иконки колокольчика в шапку сайта
 function addBellToHeader() {
     const headerWrapper = document.querySelector('.header-wrapper');
-    if (!headerWrapper || document.querySelector('.notification-bell-container')) return;
-
+    if(!headerWrapper || document.querySelector('.notification-bell')) return;
+    
+    const rightLink = headerWrapper.querySelector('a:last-child');
+    
     const bellHtml = `
-        <div class="notification-bell-container">
-            <button class="notification-bell" id="notificationBell" onclick="event.stopPropagation(); toggleNotificationDropdown()" title="Уведомления">
-                🔔
-                <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
-            </button>
+        <div class="notification-bell" onclick="event.stopPropagation(); toggleNotificationDropdown()">
+            <div class="bell-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+            </div>
+            <div class="bell-badge" style="display:none;">0</div>
             <div class="notification-dropdown" id="notificationDropdown">
                 <div class="notification-header">
-                    <span>🔔 Уведомления</span>
+                    <span>🔔 Уведомления (<span id="unreadCount">0</span>)</span>
                     <div class="notification-header-buttons">
-                        <button onclick="markAllNotificationsRead()">✓ Все прочитано</button>
-                        <button onclick="clearAllNotifications()">🗑️ Очистить</button>
+                        <button onclick="event.stopPropagation(); markAllNotificationsRead()">📖 Все</button>
+                        <button onclick="event.stopPropagation(); clearAllNotifications()">🗑️ Очистить</button>
                     </div>
                 </div>
-                <div class="notification-list" id="notificationList">
-                    <div class="notification-empty">📭 Нет уведомлений</div>
-                </div>
+                <div class="notification-list" id="notificationList"></div>
             </div>
         </div>
     `;
-
-    const rightLink = headerWrapper.querySelector('a:last-child');
-    if (rightLink) {
+    
+    if(rightLink) {
         rightLink.insertAdjacentHTML('beforebegin', bellHtml);
     } else {
         headerWrapper.insertAdjacentHTML('beforeend', bellHtml);
     }
+    
+    document.addEventListener('click', function(e) {
+        if(!e.target.closest('.notification-bell')) {
+            const dropdown = document.getElementById('notificationDropdown');
+            if(dropdown) dropdown.classList.remove('show');
+        }
+    });
 }
 
 function initNotificationBell() {
@@ -389,8 +399,14 @@ function toggleGlobalSearch() {
 
 function addGlobalSearch() {
     const headerWrapper = document.querySelector('.header-wrapper');
-    if (!headerWrapper || document.querySelector('.global-search')) return;
-
+    if(!headerWrapper || document.querySelector('.global-search')) return;
+    
+    const leftLink = headerWrapper.querySelector('a:first-child');
+    
+    if(leftLink) {
+        leftLink.style.marginRight = '15px';
+    }
+    
     const searchHtml = `
         <div class="global-search">
             <div class="global-search-icon" onclick="event.stopPropagation(); toggleGlobalSearch()">
@@ -407,30 +423,35 @@ function addGlobalSearch() {
             </div>
         </div>
     `;
-
-    const leftLink = headerWrapper.querySelector('a:first-child');
-    if (leftLink) {
+    
+    if(leftLink) {
         leftLink.insertAdjacentHTML('afterend', searchHtml);
     } else {
         headerWrapper.insertAdjacentHTML('afterbegin', searchHtml);
     }
-
+    
     const searchInput = document.getElementById('globalSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            if (globalSearchTimeout) clearTimeout(globalSearchTimeout);
+    if(searchInput) {
+        searchInput.addEventListener('input', function() {
+            if(globalSearchTimeout) clearTimeout(globalSearchTimeout);
             globalSearchTimeout = setTimeout(performGlobalSearch, 300);
         });
-        searchInput.addEventListener('click', e => e.stopPropagation());
+        
+        document.addEventListener('click', function(e) {
+            if(!e.target.closest('.global-search')) {
+                const dropdown = document.getElementById('globalSearchDropdown');
+                if(dropdown) dropdown.classList.remove('show');
+            }
+        });
+        
+        searchInput.addEventListener('keydown', function(e) {
+            if(e.key === 'Escape') {
+                const dropdown = document.getElementById('globalSearchDropdown');
+                if(dropdown) dropdown.classList.remove('show');
+                searchInput.blur();
+            }
+        });
     }
-
-    document.addEventListener('click', function (e) {
-        const dropdown = document.getElementById('globalSearchDropdown');
-        const searchContainer = document.querySelector('.global-search');
-        if (dropdown && searchContainer && !searchContainer.contains(e.target)) {
-            dropdown.classList.remove('show');
-        }
-    });
 }
 
 async function performGlobalSearch() {
