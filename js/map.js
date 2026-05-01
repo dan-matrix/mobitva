@@ -12,282 +12,257 @@ let mapDragStartX = 0, mapDragStartY = 0;
 let mapScrollLeft = 0, mapScrollTop = 0;
 
 let currentZoom = 1;
-const minZoom = 0.25;
+const minZoom = 0.888;
 const maxZoom = 1.5;
 const zoomStep = 0.035;
 
-// РАЗМЕРЫ КАНВАСА
-const CANVAS_WIDTH = 6000;
-const CANVAS_HEIGHT = 4500;
+const CANVAS_WIDTH = 1484;
+const CANVAS_HEIGHT = 1060;
 
+let currentBg = localStorage.getItem('map_bg') || 'bg-grid';
+
+// ==================== ЗАГРУЗКА ====================
 async function loadMapData() {
-    mapLocations = await getMapLocations();
-    mapConnections = await getMapConnections();
+    [mapLocations, mapConnections] = await Promise.all([
+        getMapLocations(),
+        getMapConnections()
+    ]);
+    // Синхронизируем: если у локации есть neighbors — строим connections из них
+    // Если нет — берём из map_connections
     renderMap();
-    updateConnectionSelects();
     addAdminButton();
 }
 
+// ==================== HELPERS: NEIGHBORS ====================
+
+// Получить массив ID соседей локации (из поля neighbors или map_connections)
+function getNeighborIds(loc) {
+    if (loc.neighbors && loc.neighbors.trim()) {
+        return loc.neighbors.split(',')
+            .map(s => parseInt(s.trim()))
+            .filter(n => !isNaN(n) && n > 0);
+    }
+    // Fallback: из map_connections
+    const ids = new Set();
+    mapConnections.forEach(c => {
+        if (c.from_id == loc.id) ids.add(c.to_id);
+        if (c.to_id == loc.id) ids.add(c.from_id);
+    });
+    return [...ids];
+}
+
+// Построить список уникальных пар соседей для отрисовки линий
+function buildConnectionPairs() {
+    const pairs = new Map(); // ключ: "min_max", значение: {a, b, color}
+    mapLocations.forEach(loc => {
+        const neighborIds = getNeighborIds(loc);
+        neighborIds.forEach(nid => {
+            const a = Math.min(loc.id, nid);
+            const b = Math.max(loc.id, nid);
+            const key = `${a}_${b}`;
+            if (!pairs.has(key)) {
+                // Ищем цвет в map_connections если есть
+                const conn = mapConnections.find(c =>
+                    (c.from_id == a && c.to_id == b) ||
+                    (c.from_id == b && c.to_id == a)
+                );
+                pairs.set(key, {
+                    a: mapLocations.find(l => l.id == a),
+                    b: mapLocations.find(l => l.id == b),
+                    color: conn ? conn.color : '#8a7a40'
+                });
+            }
+        });
+    });
+    return [...pairs.values()];
+}
+
+// ==================== РЕНДЕР ====================
 function renderMap() {
     const canvas = document.getElementById('mapCanvas');
-    if(!canvas) return;
+    if (!canvas) return;
     canvas.innerHTML = '';
-    
-    // Размер канваса увеличили
+    canvas.className = currentBg;
     canvas.style.width = (CANVAS_WIDTH * currentZoom) + 'px';
     canvas.style.height = (CANVAS_HEIGHT * currentZoom) + 'px';
-    
+
+    // SVG тропы
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
-    svg.style.position = 'absolute';
-    svg.style.top = '0';
-    svg.style.left = '0';
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.pointerEvents = 'none';
-    svg.style.zIndex = '5';
-    
-    for (let conn of mapConnections) {
-        const fromLoc = mapLocations.find(l => l.id == conn.from_id);
-        const toLoc = mapLocations.find(l => l.id == conn.to_id);
-        if (!fromLoc || !toLoc) continue;
-        
-        const x1 = (fromLoc.x + 50) * currentZoom;
-        const y1 = (fromLoc.y + 50) * currentZoom;
-        const x2 = (toLoc.x + 50) * currentZoom;
-        const y2 = (toLoc.y + 50) * currentZoom;
-        
-        const line = document.createElementNS(svgNS, "line");
-        line.setAttribute("x1", x1);
-        line.setAttribute("y1", y1);
-        line.setAttribute("x2", x2);
-        line.setAttribute("y2", y2);
-        line.setAttribute("stroke", conn.color || "#8a7a40");
-        line.setAttribute("stroke-width", 3);
-        line.setAttribute("stroke-dasharray", "6 4");
-        line.style.pointerEvents = "stroke";
-        line.style.cursor = "pointer";
-        
-        if(editMode) {
-            line.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if(confirm('Удалить эту тропу?')) {
-                    deleteMapConnection(conn.id).then(() => loadMapData());
-                }
-            });
-        }
-        svg.appendChild(line);
-    }
+    svg.classList.add('map-svg');
+
+    const pairs = buildConnectionPairs();
+    pairs.forEach(({ a, b, color }) => {
+        if (!a || !b) return;
+        const x1 = a.x * currentZoom, y1 = a.y * currentZoom;
+        const x2 = b.x * currentZoom, y2 = b.y * currentZoom;
+        const mx = (x1 + x2) / 2 + (y2 - y1) * 0.04;
+        const my = (y1 + y2) / 2 + (x1 - x2) * 0.04;
+
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "2.5");
+        path.setAttribute("stroke-dasharray", "7 4");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("opacity", currentBg === 'bg-parchment' ? "0.55" : "0.85");
+        path.classList.add('conn-line');
+        svg.appendChild(path);
+    });
     canvas.appendChild(svg);
-    
-    for (let loc of mapLocations) {
+
+    // Точки локаций
+    mapLocations.forEach(loc => {
         const node = document.createElement('div');
-        node.className = 'location-node';
-        if(editMode) node.classList.add('editable');
+        node.className = 'location-node' + (editMode ? ' editable' : '');
         node.style.left = (loc.x * currentZoom) + 'px';
         node.style.top = (loc.y * currentZoom) + 'px';
-        node.style.width = '100px';
-        node.style.height = '100px';
         node.setAttribute('data-id', loc.id);
-        
-        let borderColor = '#44ff88';
-        let typeClass = 'safe';
-        if (loc.color === 'yellow') {
-            borderColor = '#c7ba00';
-            typeClass = 'market';
-        } else if (loc.color === 'red') {
-            borderColor = '#ff4444';
-            typeClass = 'danger';
-        }
-        node.style.borderColor = borderColor;
-        node.classList.add(typeClass);
-        
+
+        const colorClass = loc.color === 'red' ? 'red' : loc.color === 'yellow' ? 'yellow' : 'green';
+
         node.innerHTML = `
-            <div class="icon-from-icons" style="--row:${loc.icon_row || 3}; --col:${loc.icon_col || 10}; width:28px; height:28px; margin-bottom:4px;"></div>
-            <div class="location-name" style="font-size:11px;">${escapeHtml(loc.name)}</div>
+            <div class="loc-pin ${colorClass}"></div>
+            <div class="loc-label">${escapeHtml(loc.name)}</div>
         `;
-        
-        if(editMode) {
-            node.addEventListener('mousedown', startDrag);
-        }
-        node.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openLocationModal(loc);
-        });
+
+        if (editMode) node.addEventListener('mousedown', startDrag);
+        node.addEventListener('click', e => { e.stopPropagation(); openLocationModal(loc); });
         canvas.appendChild(node);
-    }
+    });
 }
 
-function updateConnectionSelects() {
-    const fromSelect = document.getElementById('newConnFrom');
-    const toSelect = document.getElementById('newConnTo');
-    const connectionsListDiv = document.getElementById('connectionsList');
-    
-    if(fromSelect) {
-        fromSelect.innerHTML = '<option value="">-- Выберите --</option>';
-        for(let loc of mapLocations) {
-            fromSelect.innerHTML += `<option value="${loc.id}">${escapeHtml(loc.name)} (ID:${loc.id})</option>`;
-        }
-    }
-    if(toSelect) {
-        toSelect.innerHTML = '<option value="">-- Выберите --</option>';
-        for(let loc of mapLocations) {
-            toSelect.innerHTML += `<option value="${loc.id}">${escapeHtml(loc.name)} (ID:${loc.id})</option>`;
-        }
-    }
-    if(connectionsListDiv) {
-        let html = '';
-        for(let loc of mapLocations) {
-            html += `
-                <label class="connection-checkbox">
-                    <input type="checkbox" value="${loc.id}">
-                    <span>${escapeHtml(loc.name)}</span>
-                </label>
-            `;
-        }
-        connectionsListDiv.innerHTML = html || '<div style="padding:10px;text-align:center;">Нет других локаций</div>';
-    }
+// ==================== ПЕРЕКЛЮЧАТЕЛЬ ФОНА ====================
+function setBg(bgClass) {
+    currentBg = bgClass;
+    localStorage.setItem('map_bg', bgClass);
+    renderMap();
 }
 
-// ==================== КНОПКА ДЛЯ АДМИНА ====================
+function addBgSwitcher(panel) {
+    if (document.getElementById('bgSwitcher')) return;
+    const switcher = document.createElement('div');
+    switcher.id = 'bgSwitcher';
+    switcher.className = 'bg-switcher';
+    switcher.innerHTML = `
+        <label>🎨 Фон:</label>
+        <select id="bgSelect">
+            <option value="bg-grid">Тёмная сетка</option>
+            <option value="bg-parchment">Пергамент</option>
+            <option value="bg-image">Картинка (mapfon.png)</option>
+        </select>
+    `;
+    panel.insertBefore(switcher, panel.firstChild);
+    const sel = document.getElementById('bgSelect');
+    sel.value = currentBg;
+    sel.addEventListener('change', () => setBg(sel.value));
+}
+
+// ==================== КНОПКИ АДМИНА ====================
 function addAdminButton() {
     const panel = document.getElementById('editorPanel');
-    if(!panel) return;
-    
+    if (!panel) return;
     const user = checkAuth();
     isMapAdmin = user && user.role === 'admin';
-    
-    if(isMapAdmin && !document.getElementById('editModeBtn')) {
+
+    if (isMapAdmin) addBgSwitcher(panel);
+
+    if (isMapAdmin && !document.getElementById('editModeBtn')) {
         const editModeBtn = document.createElement('button');
         editModeBtn.id = 'editModeBtn';
         editModeBtn.textContent = '✏️ Режим редактирования';
         editModeBtn.className = 'cat-btn';
-        editModeBtn.style.marginRight = 'auto';
         editModeBtn.onclick = toggleEditMode;
-        panel.insertBefore(editModeBtn, panel.firstChild);
-        
-        const addElementBtn = document.createElement('button');
-        addElementBtn.id = 'addElementBtn';
-        addElementBtn.textContent = '➕ Добавить элемент';
-        addElementBtn.className = 'admin-only cat-btn';
-        addElementBtn.style.display = 'none';
-        addElementBtn.onclick = openChoiceModal;
-        panel.appendChild(addElementBtn);
-        
+        panel.appendChild(editModeBtn);
+
+        const addLocBtn = document.createElement('button');
+        addLocBtn.id = 'addLocBtn';
+        addLocBtn.textContent = '➕ Добавить локацию';
+        addLocBtn.className = 'admin-only cat-btn';
+        addLocBtn.style.display = 'none';
+        addLocBtn.onclick = openAddLocationModal;
+        panel.appendChild(addLocBtn);
+
         const saveMapBtn = document.createElement('button');
         saveMapBtn.id = 'saveMapBtn';
-        saveMapBtn.textContent = '💾 Сохранить карту';
+        saveMapBtn.textContent = '💾 Сохранить позиции';
         saveMapBtn.className = 'admin-only cat-btn';
         saveMapBtn.style.display = 'none';
         saveMapBtn.onclick = saveAllMap;
         panel.appendChild(saveMapBtn);
-        
+
         const manageMobsBtn = document.createElement('button');
         manageMobsBtn.id = 'manageMobsBtn';
-        manageMobsBtn.textContent = '🦇 Управление мобами';
+        manageMobsBtn.textContent = '🦇 Мобы';
         manageMobsBtn.className = 'admin-only cat-btn';
         manageMobsBtn.style.display = 'none';
-        manageMobsBtn.onclick = () => {
-            window.location.href = 'admin-map.html';
-        };
+        manageMobsBtn.onclick = () => { window.location.href = 'admin-map.html'; };
         panel.appendChild(manageMobsBtn);
-        
-        window.addElementBtn = addElementBtn;
-        window.saveMapBtn = saveMapBtn;
-        window.manageMobsBtn = manageMobsBtn;
     }
 }
 
-// ==================== ПЕРЕТАСКИВАНИЕ КАРТЫ ====================
+// ==================== DRAG КАРТЫ ====================
 function initMapDrag() {
     const wrapper = document.getElementById('canvasWrapper');
-    if(!wrapper) return;
-    
-    wrapper.addEventListener('mousedown', (e) => {
-        if(editMode && e.target.closest('.location-node')) return;
+    if (!wrapper) return;
+    wrapper.addEventListener('mousedown', e => {
+        if (editMode && e.target.closest('.location-node')) return;
         isDraggingMap = true;
-        mapDragStartX = e.clientX;
-        mapDragStartY = e.clientY;
-        mapScrollLeft = wrapper.scrollLeft;
-        mapScrollTop = wrapper.scrollTop;
+        mapDragStartX = e.clientX; mapDragStartY = e.clientY;
+        mapScrollLeft = wrapper.scrollLeft; mapScrollTop = wrapper.scrollTop;
         wrapper.classList.add('dragging');
         e.preventDefault();
     });
-    
-    window.addEventListener('mousemove', (e) => {
-        if(!isDraggingMap) return;
-        const dx = e.clientX - mapDragStartX;
-        const dy = e.clientY - mapDragStartY;
-        wrapper.scrollLeft = mapScrollLeft - dx;
-        wrapper.scrollTop = mapScrollTop - dy;
+    window.addEventListener('mousemove', e => {
+        if (!isDraggingMap) return;
+        wrapper.scrollLeft = mapScrollLeft - (e.clientX - mapDragStartX);
+        wrapper.scrollTop = mapScrollTop - (e.clientY - mapDragStartY);
     });
-    
     window.addEventListener('mouseup', () => {
         isDraggingMap = false;
-        const wrapper = document.getElementById('canvasWrapper');
-        if(wrapper) wrapper.classList.remove('dragging');
+        document.getElementById('canvasWrapper')?.classList.remove('dragging');
     });
 }
 
 // ==================== ЗУМ ====================
 function initZoom() {
     const wrapper = document.getElementById('canvasWrapper');
-    const zoomInBtn = document.getElementById('zoomInBtn');
-    const zoomOutBtn = document.getElementById('zoomOutBtn');
     const zoomLevelSpan = document.getElementById('zoomLevel');
-    
-    function updateZoomLevel() {
-        zoomLevelSpan.textContent = Math.round(currentZoom * 100) + '%';
-    }
-    
+
+    function updateLabel() { zoomLevelSpan.textContent = Math.round(currentZoom * 100) + '%'; }
+
     function zoom(delta) {
-        let newZoom = currentZoom + delta;
-        if(newZoom < minZoom) newZoom = minZoom;
-        if(newZoom > maxZoom) newZoom = maxZoom;
-        if(newZoom === currentZoom) return;
-        
-        // Сохраняем центр видимой области
-        const wrapper = document.getElementById('canvasWrapper');
-        const centerX = wrapper.scrollLeft + wrapper.clientWidth / 2;
-        const centerY = wrapper.scrollTop + wrapper.clientHeight / 2;
-        const ratioX = centerX / wrapper.scrollWidth;
-        const ratioY = centerY / wrapper.scrollHeight;
-        
+        const newZoom = Math.min(maxZoom, Math.max(minZoom, currentZoom + delta));
+        if (newZoom === currentZoom) return;
+        const cx = wrapper.scrollLeft + wrapper.clientWidth / 2;
+        const cy = wrapper.scrollTop + wrapper.clientHeight / 2;
+        const rx = cx / (CANVAS_WIDTH * currentZoom);
+        const ry = cy / (CANVAS_HEIGHT * currentZoom);
         currentZoom = newZoom;
         renderMap();
-        
-        // Восстанавливаем позицию скролла относительно центра
-        const newScrollWidth = wrapper.scrollWidth;
-        const newScrollHeight = wrapper.scrollHeight;
-        wrapper.scrollLeft = ratioX * newScrollWidth - wrapper.clientWidth / 2;
-        wrapper.scrollTop = ratioY * newScrollHeight - wrapper.clientHeight / 2;
-        
-        updateZoomLevel();
+        wrapper.scrollLeft = rx * CANVAS_WIDTH * currentZoom - wrapper.clientWidth / 2;
+        wrapper.scrollTop = ry * CANVAS_HEIGHT * currentZoom - wrapper.clientHeight / 2;
+        updateLabel();
     }
-    
-    if(zoomInBtn) zoomInBtn.onclick = () => zoom(zoomStep);
-    if(zoomOutBtn) zoomOutBtn.onclick = () => zoom(-zoomStep);
-    
-    wrapper.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
-        zoom(delta);
-    }, { passive: false });
-    
-    updateZoomLevel();
+
+    document.getElementById('zoomInBtn')?.addEventListener('click', () => zoom(zoomStep));
+    document.getElementById('zoomOutBtn')?.addEventListener('click', () => zoom(-zoomStep));
+    wrapper.addEventListener('wheel', e => { e.preventDefault(); zoom(e.deltaY > 0 ? -zoomStep : zoomStep); }, { passive: false });
+    updateLabel();
 }
 
-// ==================== DRAG & DROP ЛОКАЦИЙ ====================
+// ==================== DRAG ЛОКАЦИЙ ====================
 function startDrag(e) {
-    if(!editMode) return;
-    if (e.target.closest('.location-node') === null) return;
+    if (!editMode) return;
+    const node = e.target.closest('.location-node');
+    if (!node) return;
     e.stopPropagation();
-    dragTarget = e.target.closest('.location-node');
-    const rect = dragTarget.getBoundingClientRect();
-    const wrapperRect = document.getElementById('canvasWrapper').getBoundingClientRect();
+    dragTarget = node;
+    const rect = node.getBoundingClientRect();
     dragOffsetX = (e.clientX - rect.left) / currentZoom;
     dragOffsetY = (e.clientY - rect.top) / currentZoom;
-    dragTarget.classList.add('dragging');
+    node.classList.add('dragging');
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('mouseup', stopDrag);
     e.preventDefault();
@@ -295,89 +270,104 @@ function startDrag(e) {
 
 function onDrag(e) {
     if (!dragTarget) return;
-    const wrapperRect = document.getElementById('canvasWrapper').getBoundingClientRect();
-    let newX = (e.clientX - wrapperRect.left + document.getElementById('canvasWrapper').scrollLeft) / currentZoom - dragOffsetX;
-    let newY = (e.clientY - wrapperRect.top + document.getElementById('canvasWrapper').scrollTop) / currentZoom - dragOffsetY;
-    
-    // Новые границы с учетом увеличенного канваса
-    const maxX = CANVAS_WIDTH - 100;
-    const maxY = CANVAS_HEIGHT - 100;
-    newX = Math.max(0, Math.min(newX, maxX));
-    newY = Math.max(0, Math.min(newY, maxY));
-    
-    dragTarget.style.left = (newX * currentZoom) + 'px';
-    dragTarget.style.top = (newY * currentZoom) + 'px';
-    
+    const wrapper = document.getElementById('canvasWrapper');
+    const wr = wrapper.getBoundingClientRect();
+    let nx = (e.clientX - wr.left + wrapper.scrollLeft) / currentZoom - dragOffsetX;
+    let ny = (e.clientY - wr.top + wrapper.scrollTop) / currentZoom - dragOffsetY;
+    nx = Math.max(0, Math.min(nx, CANVAS_WIDTH));
+    ny = Math.max(0, Math.min(ny, CANVAS_HEIGHT));
+
+    dragTarget.style.left = (nx * currentZoom) + 'px';
+    dragTarget.style.top = (ny * currentZoom) + 'px';
+
     const id = parseInt(dragTarget.getAttribute('data-id'));
     const loc = mapLocations.find(l => l.id === id);
     if (loc) {
-        loc.x = newX;
-        loc.y = newY;
-        renderMap();
-        const newTarget = document.querySelector(`.location-node[data-id="${id}"]`);
-        if (newTarget) {
-            dragTarget = newTarget;
-            dragTarget.classList.add('dragging');
-        }
+        loc.x = nx; loc.y = ny;
+        // Перерисовываем только SVG тропы
+        redrawSvgOnly();
     }
 }
 
+function redrawSvgOnly() {
+    const canvas = document.getElementById('mapCanvas');
+    const svgNS = "http://www.w3.org/2000/svg";
+    const newSvg = document.createElementNS(svgNS, "svg");
+    newSvg.classList.add('map-svg');
+    const pairs = buildConnectionPairs();
+    pairs.forEach(({ a, b, color }) => {
+        if (!a || !b) return;
+        const x1 = a.x * currentZoom, y1 = a.y * currentZoom;
+        const x2 = b.x * currentZoom, y2 = b.y * currentZoom;
+        const mx = (x1 + x2) / 2 + (y2 - y1) * 0.04;
+        const my = (y1 + y2) / 2 + (x1 - x2) * 0.04;
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", `M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "2.5");
+        path.setAttribute("stroke-dasharray", "7 4");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("opacity", "0.85");
+        path.classList.add('conn-line');
+        newSvg.appendChild(path);
+    });
+    canvas.querySelector('svg.map-svg')?.replaceWith(newSvg);
+}
+
 function stopDrag() {
-    if (dragTarget) {
-        dragTarget.classList.remove('dragging');
-        dragTarget = null;
-    }
+    dragTarget?.classList.remove('dragging');
+    dragTarget = null;
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
 }
 
-// ==================== МОДАЛКА ЛОКАЦИИ ====================
+// ==================== МОДАЛКА ЛОКАЦИИ (просмотр) ====================
 async function openLocationModal(loc) {
-    if(!loc) return;
+    if (!loc) return;
     currentLocationId = loc.id;
-    
+
     const mobs = await getLocationMobs(loc.id);
-    
     let mobsHtml = '';
-    if(mobs && mobs.length > 0) {
+    if (mobs?.length > 0) {
         mobsHtml = '<div class="location-mobs-section"><div class="location-mobs-title">🦇 Мобы:</div><div class="location-mobs-grid">';
-        for(const mob of mobs) {
-            mobsHtml += `
-                <div class="location-mob-card" onclick="event.stopPropagation(); viewMobInfo(${mob.id})">
-                    <div class="icon-from-icons" style="--row:${mob.icon_row || 0}; --col:${mob.icon_col || 0}; width:28px; height:28px; margin:0 auto 4px auto;"></div>
-                    <div class="location-mob-name">${escapeHtml(mob.name)}</div>
-                    <div class="location-mob-level">⭐ ${mob.level}</div>
-                </div>
-            `;
-        }
+        mobs.forEach(mob => {
+            mobsHtml += `<div class="location-mob-card" onclick="event.stopPropagation();viewMobInfo(${mob.id})">
+                <div class="icon-from-icons" style="--row:${mob.icon_row||0};--col:${mob.icon_col||0};width:28px;height:28px;margin:0 auto 4px;"></div>
+                <div class="location-mob-name">${escapeHtml(mob.name)}</div>
+                <div class="location-mob-level">⭐ ${mob.level}</div>
+            </div>`;
+        });
         mobsHtml += '</div></div>';
     } else {
         mobsHtml = '<div class="location-mobs-empty">📭 Нет мобов</div>';
     }
-    
-    let typeText = '';
-    let typeClass = '';
-    if(loc.color === 'green') {
-        typeText = '🟢 Безопасная - грабить запрещено';
-        typeClass = 'safe';
-    } else if(loc.color === 'yellow') {
-        typeText = '🟡 Безопасная - грабить запрещено (магазин)';
-        typeClass = 'market';
-    } else if(loc.color === 'red') {
-        typeText = '🔴 Опасная - могут ограбить';
-        typeClass = 'danger';
+
+    // Соседи
+    const neighborIds = getNeighborIds(loc);
+    let neighborsHtml = '';
+    if (neighborIds.length > 0) {
+        const names = neighborIds.map(id => {
+            const n = mapLocations.find(l => l.id == id);
+            return n ? `<span onclick="event.stopPropagation();jumpToLocation(${n.id})" style="cursor:pointer;color:#ffaa44;text-decoration:underline;">${escapeHtml(n.name)}</span>` : `#${id}`;
+        }).join(', ');
+        neighborsHtml = `<div style="margin-bottom:12px;font-size:12px;color:#a0a0a0;">🔗 Соседи: ${names}</div>`;
     }
-    
-    const modalHtml = `
-        <div class="location-modal-content ${typeClass}">
+
+    const typeMap = { green: '🟢 Безопасная', yellow: '🟡 Магазин', red: '🔴 Опасная' };
+
+    const modal = document.getElementById('locationModal');
+    modal.innerHTML = `
+        <div class="location-modal-content">
             <div class="location-modal-header">
                 <div class="location-modal-close" onclick="closeLocationModal()">✕</div>
-                <div class="icon-from-icons" style="--row:${loc.icon_row || 3}; --col:${loc.icon_col || 10}; width:28px; height:28px; margin:0 auto;"></div>
+                <div class="icon-from-icons" style="--row:${loc.icon_row||3};--col:${loc.icon_col||10};width:28px;height:28px;margin:0 auto;"></div>
                 <div class="location-modal-title">${escapeHtml(loc.name)}</div>
-                <div class="location-modal-type">${typeText}</div>
-                ${editMode ? `<button class="location-modal-btn edit-location-btn" onclick="openEditLocationModal(${loc.id})" style="margin-left:10px; background:#44aaff;">✏️ Редактировать</button>` : ''}
+                <div class="location-modal-type">${typeMap[loc.color] || ''}</div>
+                ${editMode ? `<button class="location-modal-btn edit-location-btn" onclick="openEditLocationModal(${loc.id})" style="margin-top:8px;">✏️ Редактировать</button>` : ''}
             </div>
             <div class="location-modal-body">
+                ${neighborsHtml}
                 <div class="location-modal-description">${escapeHtml(loc.description || 'Описание отсутствует')}</div>
                 ${mobsHtml}
             </div>
@@ -386,41 +376,61 @@ async function openLocationModal(loc) {
             </div>
         </div>
     `;
-    
-    const modal = document.getElementById('locationModal');
-    modal.innerHTML = modalHtml;
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
 function closeLocationModal() {
-    const modal = document.getElementById('locationModal');
-    modal.style.display = 'none';
+    document.getElementById('locationModal').style.display = 'none';
     document.body.style.overflow = '';
     currentLocationId = null;
 }
 
-async function viewMobInfo(mobId) {
-    const mob = await getLocationMobById(mobId);
-    if(!mob) return;
-    alert(`🦇 ${mob.name}\n⭐ Уровень: ${mob.level}`);
+function jumpToLocation(locId) {
+    closeLocationModal();
+    setTimeout(() => centerMapOnLocation(locId), 100);
 }
 
-// ==================== РЕДАКТИРОВАНИЕ ЛОКАЦИИ ====================
+async function viewMobInfo(mobId) {
+    const mob = await getLocationMobById(mobId);
+    if (!mob) return;
+    alert(`🦇 ${mob.name}\n⭐ Уровень: ${mob.level}${mob.description ? '\n' + mob.description : ''}`);
+}
+
+// ==================== МОДАЛКА РЕДАКТИРОВАНИЯ ЛОКАЦИИ ====================
 async function openEditLocationModal(locId) {
     const loc = mapLocations.find(l => l.id === locId);
-    if(!loc) return;
-    
+    if (!loc) return;
+
     document.getElementById('editLocId').value = loc.id;
     document.getElementById('editLocName').value = loc.name;
     document.getElementById('editLocColor').value = loc.color || 'green';
     document.getElementById('editLocIconRow').value = loc.icon_row || 3;
     document.getElementById('editLocIconCol').value = loc.icon_col || 10;
     document.getElementById('editLocDescription').value = loc.description || '';
-    document.getElementById('editLocIconPreview').innerHTML = `✅ Текущая: ряд ${(loc.icon_row || 3) + 1}, колонка ${(loc.icon_col || 10) + 1}`;
-    
+    document.getElementById('editLocIconPreview').innerHTML = `✅ Ряд ${(loc.icon_row||3)+1}, колонка ${(loc.icon_col||10)+1}`;
+
+    // Строим чекбоксы соседей
+    renderNeighborCheckboxes(locId, getNeighborIds(loc));
+
     document.getElementById('editLocationModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+}
+
+function renderNeighborCheckboxes(currentLocId, selectedIds) {
+    const container = document.getElementById('editNeighborsList');
+    if (!container) return;
+
+    const selectedSet = new Set(selectedIds.map(Number));
+    container.innerHTML = mapLocations
+        .filter(l => l.id !== currentLocId)
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        .map(l => `
+            <label class="connection-checkbox">
+                <input type="checkbox" value="${l.id}" ${selectedSet.has(l.id) ? 'checked' : ''}>
+                <span>${escapeHtml(l.name)} <small style="color:#888;">(ID: ${l.id})</small></span>
+            </label>
+        `).join('');
 }
 
 function closeEditLocationModal() {
@@ -431,159 +441,111 @@ function closeEditLocationModal() {
 async function saveEditLocation() {
     const locId = parseInt(document.getElementById('editLocId').value);
     const name = document.getElementById('editLocName').value.trim();
-    if(!name) {
-        alert('Введите название локации!');
-        return;
-    }
-    
+    if (!name) { alert('Введите название!'); return; }
+
+    // Собираем соседей из чекбоксов
+    const checked = document.querySelectorAll('#editNeighborsList input:checked');
+    const neighborIds = [...checked].map(cb => parseInt(cb.value));
+    const neighborsStr = neighborIds.join(',');
+
+    const existing = mapLocations.find(l => l.id === locId);
     const updatedLoc = {
-        id: locId,
-        name: name,
+        id: locId, name,
         color: document.getElementById('editLocColor').value,
         icon_row: parseInt(document.getElementById('editLocIconRow').value),
         icon_col: parseInt(document.getElementById('editLocIconCol').value),
         description: document.getElementById('editLocDescription').value,
-        x: mapLocations.find(l => l.id === locId).x,
-        y: mapLocations.find(l => l.id === locId).y,
-        level: mapLocations.find(l => l.id === locId).level || 1
+        x: existing.x, y: existing.y,
+        level: existing.level || 1,
+        neighbors: neighborsStr
     };
-    
+
     const result = await saveMapLocation(updatedLoc);
-    if(result) {
-        await loadMapData();
-        closeEditLocationModal();
-        closeLocationModal();
-        alert('✅ Локация обновлена!');
-    } else {
-        alert('❌ Ошибка при сохранении!');
+    if (!result) { alert('❌ Ошибка при сохранении!'); return; }
+
+    // Синхронизируем map_connections
+    await syncConnectionsFromNeighbors(locId, neighborIds);
+
+    await loadMapData();
+    closeEditLocationModal();
+    closeLocationModal();
+    alert('✅ Локация обновлена!');
+}
+
+// Синхронизация map_connections из neighbors
+async function syncConnectionsFromNeighbors(locId, newNeighborIds) {
+    // Удаляем старые connections этой локации
+    await deleteMapConnectionsByLocationId(locId);
+
+    // Создаём новые
+    for (const nid of newNeighborIds) {
+        // Проверяем нет ли уже обратной связи
+        const existing = mapConnections.find(c =>
+            (c.from_id == locId && c.to_id == nid) ||
+            (c.from_id == nid && c.to_id == locId)
+        );
+        if (!existing) {
+            await saveMapConnection({ from_id: locId, to_id: nid, color: '#8a7a40' });
+        }
+    }
+
+    // Обновляем neighbors у соседей тоже (двусторонняя связь)
+    for (const nid of newNeighborIds) {
+        const neighbor = mapLocations.find(l => l.id == nid);
+        if (!neighbor) continue;
+        const neighborNeighbors = getNeighborIds(neighbor);
+        if (!neighborNeighbors.includes(locId)) {
+            neighborNeighbors.push(locId);
+            const updatedNeighbor = { ...neighbor, neighbors: neighborNeighbors.join(',') };
+            await saveMapLocation(updatedNeighbor);
+        }
     }
 }
 
 async function deleteCurrentLocation() {
     const locId = parseInt(document.getElementById('editLocId').value);
-    if(!confirm('Удалить локацию и все связанные с ней тропы и мобов?')) return;
-    
+    if (!confirm('Удалить локацию и все её тропы и мобов?')) return;
+
+    // Убираем эту локацию из neighbors соседей
+    const loc = mapLocations.find(l => l.id === locId);
+    if (loc) {
+        const neighborIds = getNeighborIds(loc);
+        for (const nid of neighborIds) {
+            const neighbor = mapLocations.find(l => l.id == nid);
+            if (!neighbor) continue;
+            const filtered = getNeighborIds(neighbor).filter(id => id !== locId);
+            await saveMapLocation({ ...neighbor, neighbors: filtered.join(',') });
+        }
+    }
+
     await deleteMapConnectionsByLocationId(locId);
     await deleteLocationMobsByLocationId(locId);
     await deleteMapLocation(locId);
-    
     await loadMapData();
     closeEditLocationModal();
     closeLocationModal();
     alert('🗑️ Локация удалена');
 }
 
-// ==================== РЕЖИМ РЕДАКТИРОВАНИЯ ====================
-function toggleEditMode() {
-    editMode = !editMode;
-    const editModeBtn = document.getElementById('editModeBtn');
-    const addElementBtn = document.getElementById('addElementBtn');
-    const saveMapBtn = document.getElementById('saveMapBtn');
-    const manageMobsBtn = document.getElementById('manageMobsBtn');
-    
-    if(editMode) {
-        if(editModeBtn) editModeBtn.textContent = '🔒 Выйти из режима редактирования';
-        if(addElementBtn) addElementBtn.style.display = 'inline-block';
-        if(saveMapBtn) saveMapBtn.style.display = 'inline-block';
-        if(manageMobsBtn) manageMobsBtn.style.display = 'inline-block';
-        document.getElementById('statusMsg').textContent = '✏️ Режим редактирования: можно перемещать локации, добавлять/удалять тропы';
-    } else {
-        if(editModeBtn) editModeBtn.textContent = '✏️ Режим редактирования';
-        if(addElementBtn) addElementBtn.style.display = 'none';
-        if(saveMapBtn) saveMapBtn.style.display = 'none';
-        if(manageMobsBtn) manageMobsBtn.style.display = 'none';
-        document.getElementById('statusMsg').textContent = '⚡ Нажми на локацию для просмотра';
-    }
-    renderMap();
-}
-
-// ==================== ЦЕНТРИРОВАНИЕ КАРТЫ НА ЛОКАЦИИ ====================
-function centerMapOnLocation(locationIdOrName) {
-    // Ищем локацию по ID (число) или по названию (строка)
-    let loc = null;
-    if(typeof locationIdOrName === 'number') {
-        loc = mapLocations.find(l => l.id === locationIdOrName);
-    } else {
-        loc = mapLocations.find(l => l.name.toLowerCase() === locationIdOrName.toLowerCase());
-    }
-    
-    if(!loc) {
-        console.log('❌ Локация не найдена:', locationIdOrName);
-        return false;
-    }
-    
-    const wrapper = document.getElementById('canvasWrapper');
-    if(!wrapper) return false;
-    
-    // Получаем позицию локации с учетом текущего зума
-    const targetX = (loc.x + 50) * currentZoom;
-    const targetY = (loc.y + 50) * currentZoom;
-    
-    // Центрируем
-    wrapper.scrollLeft = targetX - wrapper.clientWidth / 2;
-    wrapper.scrollTop = targetY - wrapper.clientHeight / 2;
-    
-    console.log(`✅ Карта центрирована на: ${loc.name} (ID: ${loc.id}, координаты: ${loc.x}, ${loc.y})`);
-    return true;
-}
-
-function centerMapFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const locationParam = urlParams.get('location');
-    const locationName = urlParams.get('name');
-    const locationId = urlParams.get('id');
-    
-    let targetLocation = null;
-    
-    if(locationParam) {
-        const id = parseInt(locationParam);
-        if(!isNaN(id)) targetLocation = mapLocations.find(l => l.id === id);
-    }
-    if(!targetLocation && locationId) {
-        const id = parseInt(locationId);
-        if(!isNaN(id)) targetLocation = mapLocations.find(l => l.id === id);
-    }
-    if(!targetLocation && locationName) {
-        targetLocation = mapLocations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
-    }
-    
-    if(targetLocation) {
-        setTimeout(() => {
-            centerMapOnLocation(targetLocation.id);
-        }, 150);
-        return true;
-    }
-    
-    // Если не нашли и есть локации - центрируем на первую (например, Ярмарка)
-    if(mapLocations.length > 0) {
-        // Ищем Ярмарку или первую локацию
-        const defaultLoc = mapLocations.find(l => l.name.includes('Ярмарка')) || mapLocations[0];
-        setTimeout(() => {
-            centerMapOnLocation(defaultLoc.id);
-        }, 150);
-    }
-    
-    return false;
-}
-
-// ==================== АДМИНСКИЕ ФУНКЦИИ ====================
-function openChoiceModal() {
-    if(!editMode) return;
-    document.getElementById('choiceModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeChoiceModal() {
-    document.getElementById('choiceModal').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
+// ==================== МОДАЛКА ДОБАВЛЕНИЯ ЛОКАЦИИ ====================
 function openAddLocationModal() {
-    if(!editMode) return;
-    closeChoiceModal();
-    updateConnectionSelects();
+    if (!editMode) return;
+    renderNeighborCheckboxesForNew();
     document.getElementById('addLocationModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+}
+
+function renderNeighborCheckboxesForNew() {
+    const container = document.getElementById('connectionsList');
+    if (!container) return;
+    container.innerHTML = mapLocations
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        .map(l => `
+            <label class="connection-checkbox">
+                <input type="checkbox" value="${l.id}">
+                <span>${escapeHtml(l.name)} <small style="color:#888;">(ID: ${l.id})</small></span>
+            </label>
+        `).join('');
 }
 
 function closeAddLocationModal() {
@@ -591,119 +553,118 @@ function closeAddLocationModal() {
     document.body.style.overflow = '';
     document.getElementById('newLocName').value = '';
     document.getElementById('newLocColor').value = 'green';
-    document.getElementById('newLocIconRow').value = 3;
-    document.getElementById('newLocIconCol').value = 10;
     document.getElementById('newLocDescription').value = '';
-    document.getElementById('locIconPreview').innerHTML = '❌ Не выбрано';
 }
 
 async function saveNewLocation() {
-    if(!editMode) return;
+    if (!editMode) return;
     const name = document.getElementById('newLocName').value.trim();
-    if(!name) {
-        alert('Введите название локации!');
-        return;
-    }
-    
-    const color = document.getElementById('newLocColor').value;
-    const iconRow = parseInt(document.getElementById('newLocIconRow').value);
-    const iconCol = parseInt(document.getElementById('newLocIconCol').value);
-    const description = document.getElementById('newLocDescription').value;
-    
+    if (!name) { alert('Введите название!'); return; }
+
     const checkboxes = document.querySelectorAll('#connectionsList input:checked');
-    let targetX = 500, targetY = 300;
-    
-    if(checkboxes.length > 0) {
-        const firstCheckedId = parseInt(checkboxes[0].value);
-        const nearestLoc = mapLocations.find(l => l.id === firstCheckedId);
-        if(nearestLoc) {
-            targetX = nearestLoc.x + 250;
-            targetY = nearestLoc.y + 150;
-        }
+    const neighborIds = [...checkboxes].map(cb => parseInt(cb.value));
+
+    // Позиционируем рядом с первым соседом
+    let targetX = 1000, targetY = 500;
+    if (neighborIds.length > 0) {
+        const near = mapLocations.find(l => l.id === neighborIds[0]);
+        if (near) { targetX = near.x + 200; targetY = near.y + 100; }
     }
-    
-    const newLocation = {
-        name: name,
-        color: color,
-        icon_row: iconRow,
-        icon_col: iconCol,
-        description: description,
-        x: targetX,
-        y: targetY,
-        level: 1
+
+    const newLoc = {
+        name,
+        color: document.getElementById('newLocColor').value,
+        icon_row: parseInt(document.getElementById('newLocIconRow').value) || 3,
+        icon_col: parseInt(document.getElementById('newLocIconCol').value) || 10,
+        description: document.getElementById('newLocDescription').value,
+        x: targetX, y: targetY, level: 1,
+        neighbors: neighborIds.join(',')
     };
-    
-    const result = await saveMapLocation(newLocation);
-    if(result) {
-        const newId = result[0]?.id || result.id;
-        
-        for(let cb of checkboxes) {
-            const toId = parseInt(cb.value);
-            if(toId && newId) {
-                await saveMapConnection({ from_id: newId, to_id: toId, color: '#8a7a40' });
+
+    const result = await saveMapLocation(newLoc);
+    if (!result) { alert('❌ Ошибка!'); return; }
+
+    const newId = result[0]?.id || result.id;
+
+    // Создаём connections и обновляем neighbors соседей
+    for (const nid of neighborIds) {
+        await saveMapConnection({ from_id: newId, to_id: nid, color: '#8a7a40' });
+        const neighbor = mapLocations.find(l => l.id == nid);
+        if (neighbor) {
+            const nn = getNeighborIds(neighbor);
+            if (!nn.includes(newId)) {
+                await saveMapLocation({ ...neighbor, neighbors: [...nn, newId].join(',') });
             }
         }
-        
-        await loadMapData();
-        closeAddLocationModal();
-        alert('✅ Локация добавлена!');
+    }
+
+    await loadMapData();
+    closeAddLocationModal();
+    setTimeout(() => centerMapOnLocation(newId), 200);
+    alert('✅ Локация добавлена!');
+}
+
+// ==================== РЕЖИМ РЕДАКТИРОВАНИЯ ====================
+function toggleEditMode() {
+    editMode = !editMode;
+    const editModeBtn = document.getElementById('editModeBtn');
+    const adminBtns = document.querySelectorAll('.admin-only');
+
+    if (editMode) {
+        editModeBtn.textContent = '🔒 Выйти из редактирования';
+        adminBtns.forEach(b => b.style.display = 'inline-block');
+        updateStatus('✏️ Перемещай точки, нажми на локацию чтобы редактировать тропы');
     } else {
-        alert('❌ Ошибка при сохранении!');
+        editModeBtn.textContent = '✏️ Режим редактирования';
+        adminBtns.forEach(b => b.style.display = 'none');
+        updateStatus('⚡ Нажми на локацию для просмотра');
     }
+    renderMap();
 }
 
-function openAddConnectionModal() {
-    if(!editMode) return;
-    closeChoiceModal();
-    updateConnectionSelects();
-    document.getElementById('addConnectionModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+// ==================== ЦЕНТРИРОВАНИЕ ====================
+function centerMapOnLocation(locIdOrName) {
+    let loc = typeof locIdOrName === 'number'
+        ? mapLocations.find(l => l.id === locIdOrName)
+        : mapLocations.find(l => l.name.toLowerCase() === locIdOrName.toLowerCase());
+    if (!loc) return false;
+    const wrapper = document.getElementById('canvasWrapper');
+    wrapper.scrollLeft = loc.x * currentZoom - wrapper.clientWidth / 2;
+    wrapper.scrollTop = loc.y * currentZoom - wrapper.clientHeight / 2;
+    return true;
 }
 
-function closeAddConnectionModal() {
-    document.getElementById('addConnectionModal').style.display = 'none';
-    document.body.style.overflow = '';
+function centerMapFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const idParam = p.get('location') || p.get('id');
+    const nameParam = p.get('name');
+
+    let loc = null;
+    if (idParam) loc = mapLocations.find(l => l.id == parseInt(idParam));
+    if (!loc && nameParam) loc = mapLocations.find(l => l.name.toLowerCase() === nameParam.toLowerCase());
+    if (!loc && mapLocations.length > 0) {
+        loc = mapLocations.find(l => l.name.toLowerCase().includes('ярмарка')) || mapLocations[0];
+    }
+    if (loc) setTimeout(() => centerMapOnLocation(loc.id), 150);
 }
 
-async function saveNewConnection() {
-    if(!editMode) return;
-    const fromId = parseInt(document.getElementById('newConnFrom').value);
-    const toId = parseInt(document.getElementById('newConnTo').value);
-    const color = document.getElementById('newConnColor').value;
-    
-    if(!fromId || !toId) {
-        alert('Выберите обе локации!');
-        return;
-    }
-    if(fromId === toId) {
-        alert('Нельзя создать тропу к самой себе!');
-        return;
-    }
-    
-    const result = await saveMapConnection({ from_id: fromId, to_id: toId, color: color });
-    if(result) {
-        await loadMapData();
-        closeAddConnectionModal();
-        alert('✅ Тропа добавлена!');
-    } else {
-        alert('❌ Ошибка при сохранении!');
-    }
-}
-
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
 async function saveAllMap() {
-    if(!editMode) return;
-    for(let loc of mapLocations) {
-        await saveMapLocation(loc);
+    if (!editMode) return;
+    let saved = 0;
+    for (const loc of mapLocations) {
+        const result = await saveMapLocation(loc);
+        if (result) saved++;
     }
-    updateStatus('💾 Все изменения сохранены в БД');
-    alert('✅ Карта сохранена!');
+    updateStatus(`💾 Сохранено ${saved} локаций`);
+    alert(`✅ Сохранено ${saved} локаций!`);
 }
 
 function updateStatus(msg) {
-    const statusSpan = document.getElementById('statusMsg');
-    if(statusSpan) statusSpan.textContent = msg;
+    const s = document.getElementById('statusMsg');
+    if (s) s.textContent = msg;
     setTimeout(() => {
-        if(statusSpan) statusSpan.textContent = editMode ? '✏️ Режим редактирования' : '⚡ Нажми на локацию для просмотра';
+        if (s) s.textContent = editMode ? '✏️ Режим редактирования' : '⚡ Нажми на локацию для просмотра';
     }, 3000);
 }
 
@@ -712,47 +673,32 @@ async function initMap() {
     await loadMapData();
     initMapDrag();
     initZoom();
-    
+
     document.getElementById('saveNewLocationBtn')?.addEventListener('click', saveNewLocation);
-    document.getElementById('saveNewConnectionBtn')?.addEventListener('click', saveNewConnection);
     document.getElementById('saveEditLocationBtn')?.addEventListener('click', saveEditLocation);
     document.getElementById('deleteLocationBtn')?.addEventListener('click', deleteCurrentLocation);
-    
+
     document.getElementById('selectLocIconBtn')?.addEventListener('click', () => {
-        if(typeof showIconPickerIcons !== 'undefined') {
+        if (typeof showIconPickerIcons !== 'undefined') {
             showIconPickerIcons((row, col) => {
                 document.getElementById('newLocIconRow').value = row;
                 document.getElementById('newLocIconCol').value = col;
-                document.getElementById('locIconPreview').innerHTML = `✅ Выбрано: ряд ${row + 1}, колонка ${col + 1}`;
-            }, document.getElementById('selectLocIconBtn'), { title: 'Выберите иконку для локации' });
-        } else {
-            alert('Пикер иконок не загружен');
+                document.getElementById('locIconPreview').innerHTML = `✅ Ряд ${row+1}, колонка ${col+1}`;
+            }, document.getElementById('selectLocIconBtn'), { title: 'Иконка локации' });
         }
     });
-    
+
     document.getElementById('editSelectLocIconBtn')?.addEventListener('click', () => {
-        if(typeof showIconPickerIcons !== 'undefined') {
+        if (typeof showIconPickerIcons !== 'undefined') {
             showIconPickerIcons((row, col) => {
                 document.getElementById('editLocIconRow').value = row;
                 document.getElementById('editLocIconCol').value = col;
-                document.getElementById('editLocIconPreview').innerHTML = `✅ Выбрано: ряд ${row + 1}, колонка ${col + 1}`;
-            }, document.getElementById('editSelectLocIconBtn'), { title: 'Выберите иконку для локации' });
-        } else {
-            alert('Пикер иконок не загружен');
+                document.getElementById('editLocIconPreview').innerHTML = `✅ Ряд ${row+1}, колонка ${col+1}`;
+            }, document.getElementById('editSelectLocIconBtn'), { title: 'Иконка локации' });
         }
     });
-    
-    // Центрируем карту на локации из URL или на Стагороде по умолчанию
-    const centered = centerMapFromUrl();
-    if(!centered && mapLocations.length > 0) {
-        // Если в URL ничего не указано - центрируем на Стагороде (или первой локации)
-        const starogorod = mapLocations.find(l => l.name.toLowerCase().includes('стагород'));
-        if(starogorod) {
-            setTimeout(() => {
-                centerMapOnLocation(starogorod.id);
-            }, 200);
-        }
-    }
+
+    centerMapFromUrl();
 }
 
 initMap();

@@ -8,8 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        .wrapper{max-width:1750px;margin:0 auto;padding:20px;background:linear-gradient(145deg,#1a1612,#12100e);border-radius:20px;border:1px solid rgba(199,186,0,0.3);box-shadow:0 0 30px rgba(199,186,0,0.1);}
-        /* ==================== КОМПАКТНЫЕ ШАПКИ ==================== */
+        .wrapper{max-width:1400px;margin:0 auto;padding:20px;background:linear-gradient(145deg,#1a1612,#12100e);border-radius:20px;border:1px solid rgba(199,186,0,0.3);box-shadow:0 0 30px rgba(199,186,0,0.1);}
         .top-bar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px;flex-wrap:wrap;}
         .top-bar .admin-panel{flex:1;margin-bottom:0;padding:6px 15px;}
         .top-bar .header-wrapper{flex:2;margin-bottom:0;padding:6px 15px;}
@@ -20,34 +19,121 @@
         .top-bar .admin-panel .admin-btn{padding:4px 10px;font-size:11px;}
         .top-bar .header-wrapper .site-title{font-size:20px;}
         .top-bar .header-wrapper a{padding:4px 10px;font-size:11px;}
-        
-        /* ==================== УВЕЛИЧЕННОЕ ПОЛЕ КАРТЫ ==================== */
+
         .map-editor-container{background:linear-gradient(145deg,#1a1612,#12100e);border-radius:24px;border:1px solid rgba(199,186,0,0.3);padding:15px;position:relative;}
-        .map-canvas-wrapper{overflow:auto;background:#0d0a07;border-radius:16px;height:70vh;min-height:850px;position:relative;cursor:grab;user-select:none;}
+        .map-canvas-wrapper{overflow:auto;border-radius:16px;height:72vh;min-height:550px;position:relative;cursor:grab;user-select:none;border:2px solid rgba(199,186,0,0.3);}
         .map-canvas-wrapper.dragging{cursor:grabbing;}
-        #mapCanvas{position:relative;width:2000px;height:1700px;background-image:radial-gradient(rgba(199,186,0,0.1) 1px,transparent 1px);background-size:40px 40px;}
-        
-        /* Остальные стили без изменений */
-        .location-node{position:absolute;width:100px;height:100px;background:#2a2420;border:3px solid #c7ba00;border-radius:50%;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.2s;z-index:10;box-shadow:0 0 15px rgba(0,0,0,0.5);}
+
+        /* ===== КАНВАС И ФОНЫ ===== */
+        #mapCanvas{position:relative;transition:background 0.3s;}
+
+        #mapCanvas.bg-grid{
+            background-color:#0d0a07;
+            background-image:radial-gradient(rgba(199,186,0,0.12) 1px,transparent 1px);
+            background-size:40px 40px;
+        }
+        #mapCanvas.bg-parchment{
+            background-color:#c9a55c;
+            background-image:
+                radial-gradient(ellipse at 10% 10%, rgba(215,180,95,0.7) 0%, transparent 38%),
+                radial-gradient(ellipse at 90% 85%, rgba(155,105,30,0.6) 0%, transparent 38%),
+                radial-gradient(ellipse at 55% 55%, rgba(195,150,65,0.3) 0%, transparent 50%),
+                repeating-linear-gradient(0deg,transparent,transparent 49px,rgba(100,60,0,0.05) 49px,rgba(100,60,0,0.05) 50px),
+                repeating-linear-gradient(90deg,transparent,transparent 49px,rgba(100,60,0,0.05) 49px,rgba(100,60,0,0.05) 50px);
+        }
+        #mapCanvas.bg-parchment::after{
+            content:'';position:absolute;inset:0;
+            background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='500' height='500' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+            pointer-events:none;z-index:1;
+        }
+        #mapCanvas.bg-image{
+            background-color:#0d0a07;
+            background-image:url('img/mapfon.png');
+            background-repeat:no-repeat;
+            background-size:cover;
+            background-position:center top;
+        }
+
+        /* ===== ТОЧКИ ЛОКАЦИЙ ===== */
+        .location-node{
+            position:absolute;
+            cursor:pointer;
+            display:flex;flex-direction:column;align-items:center;gap:3px;
+            z-index:10;
+            transform:translate(-50%,-50%);
+            transition:transform 0.15s;
+        }
+        .location-node:hover{transform:translate(-50%,-50%) scale(1.25);}
         .location-node.editable{cursor:move;}
-        .location-node:hover{transform:scale(1.05);border-color:#ffaa44;box-shadow:0 0 20px rgba(199,186,0,0.5);}
         .location-node.dragging{opacity:0.8;z-index:1000;transition:none;}
-        .location-name{font-size:11px;font-weight:bold;color:#ffdd88;text-align:center;margin-top:6px;padding:0 5px;}
-        .editor-panel{margin-top:15px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:12px;background:#2a2420;border-radius:16px;}
-        .editor-panel button,.editor-panel select{background:#1a1612;border:1px solid #c7ba00;border-radius:8px;padding:6px 12px;color:#e8dcc0;cursor:pointer;transition:0.2s;}
+        .location-node.dragging:hover{transform:translate(-50%,-50%);}
+
+        .loc-pin{
+            width:14px;height:14px;border-radius:50%;
+            border:2px solid rgba(0,0,0,0.5);
+            box-shadow:0 0 6px rgba(0,0,0,0.6);
+            flex-shrink:0;transition:width 0.15s,height 0.15s;
+        }
+        .location-node:hover .loc-pin{width:18px;height:18px;}
+
+        .loc-pin.green{background:#44cc66;border-color:#1a7a38;box-shadow:0 0 8px rgba(68,204,102,0.7);}
+        .loc-pin.yellow{background:#e8d63a;border-color:#a89020;box-shadow:0 0 8px rgba(232,214,58,0.7);}
+        .loc-pin.red{background:#e84444;border-color:#a82020;box-shadow:0 0 8px rgba(232,68,68,0.7);}
+
+        .loc-label{
+            font-size:11px;font-weight:bold;
+            white-space:nowrap;pointer-events:none;
+            max-width:130px;text-align:center;
+            overflow:hidden;text-overflow:ellipsis;
+        }
+        /* Цвет подписей зависит от фона */
+        #mapCanvas.bg-grid .loc-label{
+            color:#ffeeaa;
+            text-shadow:1px 1px 3px rgba(0,0,0,1),-1px -1px 3px rgba(0,0,0,1),0 0 6px rgba(0,0,0,1);
+        }
+        #mapCanvas.bg-parchment .loc-label{
+            color:#2d1200;
+            text-shadow:0 1px 0 rgba(220,180,80,0.6),1px 0 0 rgba(220,180,80,0.6);
+            background:rgba(210,165,70,0.35);
+            padding:0 4px;border-radius:3px;
+        }
+        #mapCanvas.bg-image .loc-label{
+            color:#ffe88a;
+            text-shadow:1px 1px 4px rgba(0,0,0,1),-1px -1px 4px rgba(0,0,0,1),0 0 8px rgba(0,0,0,1);
+        }
+
+        /* ===== SVG ТРОПЫ ===== */
+        svg.map-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;}
+
+        /* На пергаменте тропы коричневые */
+        #mapCanvas.bg-parchment svg.map-svg .conn-line{stroke:rgba(100,55,0,0.5)!important;stroke-dasharray:8 5;}
+        #mapCanvas.bg-parchment svg.map-svg .conn-line:not([stroke="#8a7a40"]){stroke:rgba(100,55,0,0.5)!important;}
+
+        /* ===== ПАНЕЛЬ ===== */
+        .editor-panel{margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:#2a2420;border-radius:16px;}
+        .editor-panel button,.editor-panel select{background:#1a1612;border:1px solid #c7ba00;border-radius:8px;padding:5px 11px;color:#e8dcc0;cursor:pointer;transition:0.2s;font-size:12px;}
         .editor-panel button:hover{background:#c7ba00;color:#0d0a07;}
         .editor-panel .admin-only{display:none;}
-        .editor-panel.admin-mode .admin-only{display:inline-block;}
         .status-bar{font-size:11px;color:#c7ba00;margin-left:auto;}
-        .icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0) * -28px) calc(var(--row,0) * -28px);display:inline-block;vertical-align:middle;}
-        
+
+        /* Переключатель фона */
+        .bg-switcher{display:flex;align-items:center;gap:6px;background:#1a1612;border:1px solid rgba(199,186,0,0.4);border-radius:8px;padding:4px 10px;}
+        .bg-switcher label{font-size:11px;color:#c7ba00;white-space:nowrap;}
+        .bg-switcher select{background:#0d0a07;border:none;color:#e8dcc0;font-size:11px;padding:2px;outline:none;cursor:pointer;}
+
+        /* ===== ЗУМ ===== */
+        .zoom-controls{position:absolute;bottom:15px;right:15px;display:flex;flex-direction:column;gap:6px;z-index:100;}
+        .zoom-btn{width:36px;height:36px;background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid #c7ba00;border-radius:10px;color:#c7ba00;font-size:20px;font-weight:bold;cursor:pointer;transition:0.2s;display:flex;align-items:center;justify-content:center;}
+        .zoom-btn:hover{background:#c7ba00;color:#0d0a07;}
+        .zoom-level{background:rgba(0,0,0,0.75);padding:3px 8px;border-radius:16px;font-size:11px;color:#c7ba00;text-align:center;}
+
+        /* ===== МОДАЛКИ ===== */
         .choice-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:350px;max-width:90%;text-align:center;}
         .choice-modal h3{color:#d4b35a;margin-bottom:20px;}
         .choice-buttons{display:flex;gap:15px;justify-content:center;}
         .choice-btn{background:#2a2420;border:2px solid #c7ba00;border-radius:40px;padding:12px 25px;color:#c7ba00;cursor:pointer;font-weight:bold;transition:0.2s;}
-        .choice-btn:hover{background:#c7ba00;color:#0d0a07;transform:scale(1.02);}
-        
-        .location-edit-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:500px;max-width:90%;max-height:85vh;overflow-y:auto;}
+        .choice-btn:hover{background:#c7ba00;color:#0d0a07;}
+        .location-edit-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:500px;max-width:92%;max-height:85vh;overflow-y:auto;}
         .location-edit-modal h3{color:#d4b35a;margin-bottom:20px;text-align:center;}
         .form-group{margin-bottom:15px;}
         .form-group label{display:block;margin-bottom:6px;color:#c7ba00;font-weight:bold;font-size:12px;}
@@ -55,16 +141,11 @@
         .connections-list{max-height:200px;overflow-y:auto;background:#0d0a07;border:1px solid #3a342a;border-radius:8px;padding:8px;}
         .connection-checkbox{display:flex;align-items:center;gap:10px;padding:6px;cursor:pointer;border-bottom:1px solid #3a342a;}
         .connection-checkbox:hover{background:#2a2420;}
-        .connection-checkbox input{cursor:pointer;}
-        .modal-buttons{display:flex;gap:15px;justify-content:center;margin-top:20px;}
+        .modal-buttons{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
         .modal-buttons button{padding:10px 20px;}
-        
-        .zoom-controls{position:absolute;bottom:15px;right:15px;display:flex;flex-direction:column;gap:6px;z-index:100;}
-        .zoom-btn{width:36px;height:36px;background:linear-gradient(145deg,#2a2420,#1f1b17);border:2px solid #c7ba00;border-radius:10px;color:#c7ba00;font-size:20px;font-weight:bold;cursor:pointer;transition:0.2s;display:flex;align-items:center;justify-content:center;}
-        .zoom-btn:hover{background:#c7ba00;color:#0d0a07;transform:scale(1.05);}
-        .zoom-level{position:absolute;bottom:70px;right:15px;background:rgba(0,0,0,0.7);padding:3px 8px;border-radius:16px;font-size:11px;color:#c7ba00;z-index:100;}
-        
-        .location-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;width:400px;max-width:90%;animation:modalFadeIn 0.2s ease;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;}
+        .icon-preview{margin-top:6px;font-size:12px;color:#c7ba00;}
+
+        .location-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;width:400px;max-width:92%;animation:modalFadeIn 0.2s ease;}
         .location-modal-header{background:linear-gradient(135deg,#2a2420,#1a1612);padding:20px;border-radius:22px 22px 0 0;border-bottom:2px solid #c7ba00;text-align:center;position:relative;}
         .location-modal-close{position:absolute;top:12px;right:18px;font-size:26px;cursor:pointer;color:#c7ba00;transition:0.2s;}
         .location-modal-close:hover{color:#ff4444;}
@@ -83,15 +164,16 @@
         .location-modal-footer{padding:15px 20px 20px;text-align:center;}
         .location-modal-btn{background:linear-gradient(145deg,#2a2420,#1f1b17);border:1px solid #c7ba00;border-radius:40px;padding:8px 25px;color:#c7ba00;cursor:pointer;transition:0.2s;font-weight:bold;}
         .location-modal-btn:hover{background:#c7ba00;color:#0d0a07;}
-        .edit-location-btn{background:#44aaff;border-color:#44aaff;color:#fff;margin-left:10px;}
-        .edit-location-btn:hover{background:#88ccff;}
-        @keyframes modalFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.9);}to{opacity:1;transform:translate(-50%,-50%) scale(1);}}
-        @media (max-width:768px){.location-node{width:80px;height:80px;}.location-name{font-size:9px;}.top-bar{flex-direction:column;}.map-canvas-wrapper{height:50vh;}}
+        .edit-location-btn{background:#44aaff!important;border-color:#44aaff!important;color:#fff!important;}
+        .edit-location-btn:hover{background:#88ccff!important;}
+
+        .icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0)*-28px) calc(var(--row,0)*-28px);display:inline-block;vertical-align:middle;}
+        @keyframes modalFadeIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
+        @media(max-width:768px){.top-bar{flex-direction:column;}.map-canvas-wrapper{height:50vh;}.loc-label{font-size:9px;max-width:80px;}}
     </style>
 </head>
 <body>
 <div class="wrapper">
-    <!-- Компактные шапки в один ряд -->
     <div class="top-bar">
         <div id="adminPanel" style="display:none;">
             <div class="admin-panel">
@@ -119,14 +201,13 @@
                 </div>
             </div>
         </div>
-        
         <div class="header-wrapper">
             <a href="https://mobitva.net" target="_blank">mobitva.net</a>
             <div class="site-title">🗺️ КАРТА MMOБИТВЫ 🗺️</div>
             <a href="https://mmobitva.ru" target="_blank">mmobitva.ru</a>
         </div>
     </div>
-    
+
     <div class="categories">
         <button class="cat-btn" onclick="location.href='index.html'">🏠 Главная</button>
         <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
@@ -134,7 +215,7 @@
 
     <div class="map-editor-container">
         <div class="map-canvas-wrapper" id="canvasWrapper">
-            <div id="mapCanvas"></div>
+            <div id="mapCanvas" class="bg-grid"></div>
         </div>
         <div class="zoom-controls">
             <button class="zoom-btn" id="zoomInBtn">+</button>
@@ -147,36 +228,20 @@
     </div>
 </div>
 
-<div id="locationModal" class="location-modal" style="display:none;"></div>
-
-<!-- Модалка выбора типа элемента -->
-<div id="choiceModal" class="modal" style="display:none;">
-    <div class="choice-modal">
-        <h3>➕ Что добавить?</h3>
-        <div class="choice-buttons">
-            <button class="choice-btn" onclick="openAddLocationModal()">🏰 Локацию</button>
-            <button class="choice-btn" onclick="openAddConnectionModal()">🛣️ Тропу</button>
-        </div>
-        <div class="modal-buttons" style="margin-top:20px;">
-            <button class="cat-btn" onclick="closeChoiceModal()">❌ Отмена</button>
-        </div>
-    </div>
-</div>
+<!-- Модалка локации -->
+<div id="locationModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.82);backdrop-filter:blur(4px);align-items:center;justify-content:center;"></div>
 
 <!-- Модалка добавления локации -->
 <div id="addLocationModal" class="modal" style="display:none;">
     <div class="location-edit-modal">
         <h3>🏰 Новая локация</h3>
+        <div class="form-group"><label>📝 Название</label><input type="text" id="newLocName" placeholder="Название локации"></div>
         <div class="form-group">
-            <label>📝 Название</label>
-            <input type="text" id="newLocName" placeholder="Название локации">
-        </div>
-        <div class="form-group">
-            <label>🎨 Цвет (тип)</label>
+            <label>🎨 Тип локации</label>
             <select id="newLocColor">
-                <option value="green">🟢 Зеленый - Безопасная</option>
-                <option value="yellow">🟡 Желтый - Магазин</option>
-                <option value="red">🔴 Красный - Опасная</option>
+                <option value="green">🟢 Безопасная</option>
+                <option value="yellow">🟡 Магазин</option>
+                <option value="red">🔴 Опасная</option>
             </select>
         </div>
         <div class="form-group">
@@ -186,12 +251,9 @@
             <input type="hidden" id="newLocIconRow" value="3">
             <input type="hidden" id="newLocIconCol" value="10">
         </div>
+        <div class="form-group"><label>📝 Описание</label><textarea id="newLocDescription" rows="3" placeholder="Описание локации..."></textarea></div>
         <div class="form-group">
-            <label>📝 Описание</label>
-            <textarea id="newLocDescription" rows="3" placeholder="Описание локации..."></textarea>
-        </div>
-        <div class="form-group">
-            <label>🔗 Привязать тропы к локациям</label>
+            <label>🔗 Тропы к локациям</label>
             <div id="connectionsList" class="connections-list"></div>
         </div>
         <div class="modal-buttons">
@@ -206,16 +268,13 @@
     <div class="location-edit-modal">
         <h3>✏️ Редактировать локацию</h3>
         <input type="hidden" id="editLocId">
+        <div class="form-group"><label>📝 Название</label><input type="text" id="editLocName" placeholder="Название локации"></div>
         <div class="form-group">
-            <label>📝 Название</label>
-            <input type="text" id="editLocName" placeholder="Название локации">
-        </div>
-        <div class="form-group">
-            <label>🎨 Цвет (тип)</label>
+            <label>🎨 Тип локации</label>
             <select id="editLocColor">
-                <option value="green">🟢 Зеленый - Безопасная</option>
-                <option value="yellow">🟡 Желтый - Магазин</option>
-                <option value="red">🔴 Красный - Опасная</option>
+                <option value="green">🟢 Безопасная</option>
+                <option value="yellow">🟡 Магазин</option>
+                <option value="red">🔴 Опасная</option>
             </select>
         </div>
         <div class="form-group">
@@ -225,43 +284,16 @@
             <input type="hidden" id="editLocIconRow" value="3">
             <input type="hidden" id="editLocIconCol" value="10">
         </div>
+        <div class="form-group"><label>📝 Описание</label><textarea id="editLocDescription" rows="3" placeholder="Описание локации..."></textarea></div>
         <div class="form-group">
-            <label>📝 Описание</label>
-            <textarea id="editLocDescription" rows="3" placeholder="Описание локации..."></textarea>
+            <label>🔗 Соседние локации (тропы)</label>
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">Отметь галочкой все локации, с которыми есть прямая тропа</div>
+            <div id="editNeighborsList" class="connections-list"></div>
         </div>
         <div class="modal-buttons">
             <button class="cat-btn" id="saveEditLocationBtn">💾 Сохранить</button>
             <button class="cat-btn" onclick="closeEditLocationModal()">❌ Отмена</button>
-            <button class="cat-btn delete-btn" id="deleteLocationBtn" style="background:#ff4444;">🗑️ Удалить</button>
-        </div>
-    </div>
-</div>
-
-<!-- Модалка добавления тропы -->
-<div id="addConnectionModal" class="modal" style="display:none;">
-    <div class="location-edit-modal">
-        <h3>🛣️ Новая тропа</h3>
-        <div class="form-group">
-            <label>📍 Откуда</label>
-            <select id="newConnFrom"></select>
-        </div>
-        <div class="form-group">
-            <label>📍 Куда</label>
-            <select id="newConnTo"></select>
-        </div>
-        <div class="form-group">
-            <label>🎨 Цвет тропы</label>
-            <select id="newConnColor">
-                <option value="#8a7a40">🌾 Обычная</option>
-                <option value="#44aaff">🔷 Синяя ветка</option>
-                <option value="#ff4444">🔴 Красная ветка</option>
-                <option value="#44ff88">🌿 Лесная тропа</option>
-                <option value="#ff44aa">👹 Опасная тропа</option>
-            </select>
-        </div>
-        <div class="modal-buttons">
-            <button class="cat-btn" id="saveNewConnectionBtn">💾 Сохранить</button>
-            <button class="cat-btn" onclick="closeAddConnectionModal()">❌ Отмена</button>
+            <button class="cat-btn" id="deleteLocationBtn" style="background:#ff4444;border-color:#ff4444;">🗑️ Удалить</button>
         </div>
     </div>
 </div>

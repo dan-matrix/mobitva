@@ -397,7 +397,7 @@
                                 });
                                 saveHistoryFlags();
                                 
-                                await db.from('user_timers').update({ is_active: false }).eq('id', timer.id);
+                                await toggleTimerActive(timer.id, false);
                             }
                         }
                     }
@@ -710,8 +710,8 @@
         }
 
         async function selectAvatar(characterId, avatar) {
-            const { error } = await db.from('user_characters').update({ avatar: avatar }).eq('id', characterId);
-            if (error) {
+            const success = await updateCharacter(characterId, { avatar });
+            if (!success) {
                 alert('❌ Ошибка при выборе аватарки!');
                 return;
             }
@@ -746,26 +746,18 @@
                 return;
             }
 
-            if (newPassword.length < 4) {
-                alert('❌ Пароль должен быть не менее 4 символов!');
+            if (newPassword.length < 6) {
+                alert('❌ Пароль должен быть не менее 6 символов!');
                 return;
             }
 
-            const user = await loginUser(currentUser.login, oldPassword);
-            if (!user) {
-                alert('❌ Неверный текущий пароль!');
+            const result = await changePassword(currentUser.login, oldPassword, newPassword);
+            if (!result.success) {
+                alert(result.message);
                 return;
             }
 
-            const { error } = await db.from('users').update({ password: newPassword }).eq('login', currentUser.login);
-
-            if (error) {
-                alert('❌ Ошибка при смене пароля!');
-                console.error(error);
-                return;
-            }
-
-            alert('✅ Пароль успешно изменен!');
+            alert(result.message);
             closeChangePasswordModal();
         }
 
@@ -799,24 +791,10 @@
             const endTime = Date.now() + totalMs;
 
             if (timerId) {
-                // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕГО ТАЙМЕРА
-                await updateTimer(parseInt(timerId), questName, endTime, totalMs);
-                await db.from('user_timers').update({ notes: notes }).eq('id', parseInt(timerId));
+                await updateTimer(parseInt(timerId), questName, endTime, totalMs, notes);
             } else {
-                // НОВЫЙ ТАЙМЕР
-                const { data, error } = await db.from('user_timers').insert([
-                    { 
-                        character_id: characterId, 
-                        quest_name: questName, 
-                        end_time: endTime, 
-                        duration: totalMs,
-                        notes: notes,  // ЗАПИСЫВАЕМ ЗАМЕТКИ
-                        is_active: true 
-                    }
-                ]).select();
-                
-                if (error) {
-                    console.error('Ошибка создания таймера:', error);
+                const newTimer = await addTimer(characterId, questName, endTime, totalMs, notes);
+                if (!newTimer) {
                     alert('❌ Ошибка при создании таймера!');
                     return;
                 }
@@ -850,12 +828,8 @@
             const timer = timers.find(t => t.id === timerId);
             if (timer) {
                 const endTime = Date.now() + timer.duration;
-                await updateTimer(timerId, timer.quest_name, endTime, timer.duration);
-                // СОХРАНЯЕМ ЗАМЕТКИ ПРИ РЕСТАРТЕ
-                await db.from('user_timers').update({ 
-                    is_active: true, 
-                    notes: timer.notes || '' 
-                }).eq('id', timerId);
+                await updateTimer(timerId, timer.quest_name, endTime, timer.duration, timer.notes || '');
+                await toggleTimerActive(timerId, true);
                 timer.historyRecorded = false;
                 timer.is_active = true;
                 saveHistoryFlags();
@@ -876,8 +850,8 @@
             for (const timer of timers) {
                 if (timer.duration > 0) {
                     const endTime = Date.now() + timer.duration;
-                    await updateTimer(timer.id, timer.quest_name, endTime, timer.duration);
-                    await db.from('user_timers').update({ is_active: true, notes: timer.notes || '' }).eq('id', timer.id);
+                    await updateTimer(timer.id, timer.quest_name, endTime, timer.duration, timer.notes || '');
+                    await toggleTimerActive(timer.id, true);
                     timer.historyRecorded = false;
                     timer.is_active = true;
                     refreshed++;
