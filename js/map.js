@@ -11,10 +11,10 @@ let isDraggingMap = false;
 let mapDragStartX = 0, mapDragStartY = 0;
 let mapScrollLeft = 0, mapScrollTop = 0;
 
-let currentZoom = 1;
+let currentZoom = 0.888;
 const minZoom = 0.888;
 const maxZoom = 1.5;
-const zoomStep = 0.035;
+const zoomStep = 0.045;
 
 const CANVAS_WIDTH = 1484;
 const CANVAS_HEIGHT = 1060;
@@ -112,7 +112,7 @@ function renderMap() {
     });
     canvas.appendChild(svg);
 
-    // Точки локаций
+    // Иконки локаций из iconmap.png
     mapLocations.forEach(loc => {
         const node = document.createElement('div');
         node.className = 'location-node' + (editMode ? ' editable' : '');
@@ -120,10 +120,13 @@ function renderMap() {
         node.style.top = (loc.y * currentZoom) + 'px';
         node.setAttribute('data-id', loc.id);
 
-        const colorClass = loc.color === 'red' ? 'red' : loc.color === 'yellow' ? 'yellow' : 'green';
+        // icon_map_row / icon_map_col — иконка из iconmap.png
+        // Дефолт: ряд 8, колонка 11 (последняя иконка)
+        const iconRow = (loc.icon_map_row !== undefined && loc.icon_map_row !== null) ? loc.icon_map_row : 8;
+        const iconCol = (loc.icon_map_col !== undefined && loc.icon_map_col !== null) ? loc.icon_map_col : 11;
 
         node.innerHTML = `
-            <div class="loc-pin ${colorClass}"></div>
+            <div class="loc-icon-map" style="--mr:${iconRow};--mc:${iconCol};"></div>
             <div class="loc-label">${escapeHtml(loc.name)}</div>
         `;
 
@@ -361,7 +364,7 @@ async function openLocationModal(loc) {
         <div class="location-modal-content">
             <div class="location-modal-header">
                 <div class="location-modal-close" onclick="closeLocationModal()">✕</div>
-                <div class="icon-from-icons" style="--row:${loc.icon_row||3};--col:${loc.icon_col||10};width:28px;height:28px;margin:0 auto;"></div>
+                <div class="loc-icon-map loc-icon-modal" style="--mr:${(loc.icon_map_row!==undefined&&loc.icon_map_row!==null)?loc.icon_map_row:8};--mc:${(loc.icon_map_col!==undefined&&loc.icon_map_col!==null)?loc.icon_map_col:11};"></div>
                 <div class="location-modal-title">${escapeHtml(loc.name)}</div>
                 <div class="location-modal-type">${typeMap[loc.color] || ''}</div>
                 ${editMode ? `<button class="location-modal-btn edit-location-btn" onclick="openEditLocationModal(${loc.id})" style="margin-top:8px;">✏️ Редактировать</button>` : ''}
@@ -405,10 +408,18 @@ async function openEditLocationModal(locId) {
     document.getElementById('editLocId').value = loc.id;
     document.getElementById('editLocName').value = loc.name;
     document.getElementById('editLocColor').value = loc.color || 'green';
-    document.getElementById('editLocIconRow').value = loc.icon_row || 3;
-    document.getElementById('editLocIconCol').value = loc.icon_col || 10;
     document.getElementById('editLocDescription').value = loc.description || '';
-    document.getElementById('editLocIconPreview').innerHTML = `✅ Ряд ${(loc.icon_row||3)+1}, колонка ${(loc.icon_col||10)+1}`;
+
+    // Иконка из iconmap.png
+    const mr = (loc.icon_map_row !== undefined && loc.icon_map_row !== null) ? loc.icon_map_row : 8;
+    const mc = (loc.icon_map_col !== undefined && loc.icon_map_col !== null) ? loc.icon_map_col : 11;
+    document.getElementById('editLocMapIconRow').value = mr;
+    document.getElementById('editLocMapIconCol').value = mc;
+    const preview = document.getElementById('editLocMapIconPreview');
+    if (preview) {
+        preview.style.setProperty('--mr', mr);
+        preview.style.setProperty('--mc', mc);
+    }
 
     // Строим чекбоксы соседей
     renderNeighborCheckboxes(locId, getNeighborIds(loc));
@@ -452,8 +463,10 @@ async function saveEditLocation() {
     const updatedLoc = {
         id: locId, name,
         color: document.getElementById('editLocColor').value,
-        icon_row: parseInt(document.getElementById('editLocIconRow').value),
-        icon_col: parseInt(document.getElementById('editLocIconCol').value),
+        icon_row: existing.icon_row || 3,
+        icon_col: existing.icon_col || 10,
+        icon_map_row: parseInt(document.getElementById('editLocMapIconRow').value),
+        icon_map_col: parseInt(document.getElementById('editLocMapIconCol').value),
         description: document.getElementById('editLocDescription').value,
         x: existing.x, y: existing.y,
         level: existing.level || 1,
@@ -574,8 +587,10 @@ async function saveNewLocation() {
     const newLoc = {
         name,
         color: document.getElementById('newLocColor').value,
-        icon_row: parseInt(document.getElementById('newLocIconRow').value) || 3,
-        icon_col: parseInt(document.getElementById('newLocIconCol').value) || 10,
+        icon_row: 3,
+        icon_col: 10,
+        icon_map_row: parseInt(document.getElementById('newLocMapIconRow').value) || 8,
+        icon_map_col: parseInt(document.getElementById('newLocMapIconCol').value) || 11,
         description: document.getElementById('newLocDescription').value,
         x: targetX, y: targetY, level: 1,
         neighbors: neighborIds.join(',')
@@ -668,6 +683,81 @@ function updateStatus(msg) {
     }, 3000);
 }
 
+
+// ==================== ПИКЕР ИКОНОК КАРТЫ (iconmap.png) ====================
+// 9 рядов × 12 колонок, каждая иконка 50×50px
+
+function showMapIconPicker(onSelect, buttonEl) {
+    const existing = document.getElementById('mapIconPickerPopup');
+    if (existing) existing.remove();
+
+    const picker = document.createElement('div');
+    picker.id = 'mapIconPickerPopup';
+    picker.style.cssText = `
+        position:fixed;z-index:20000;
+        background:linear-gradient(145deg,#1e1a14,#0a0806);
+        border:2px solid #c7ba00;border-radius:16px;
+        padding:15px;box-shadow:0 0 30px rgba(0,0,0,0.7);
+    `;
+
+    picker.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #c7ba00;">
+            <span style="color:#d4b35a;font-weight:bold;font-size:14px;">🗺️ Иконка локации</span>
+            <button onclick="document.getElementById('mapIconPickerPopup').remove()" 
+                style="background:#ff4444;border:none;border-radius:6px;padding:3px 12px;color:white;cursor:pointer;font-size:13px;">✕</button>
+        </div>
+        <div id="mapIconPickerGrid" style="display:grid;grid-template-columns:repeat(12,50px);gap:3px;max-height:430px;overflow-y:auto;padding:4px;"></div>
+    `;
+
+    document.body.appendChild(picker);
+
+    const grid = picker.querySelector('#mapIconPickerGrid');
+    for (let row = 0; row < 24; row++) {
+        for (let col = 0; col < 12; col++) {
+            const cell = document.createElement('div');
+            cell.style.cssText = `
+                width:50px;height:50px;
+                background-image:url('img/iconmap.png');
+                background-repeat:no-repeat;
+                background-position:-${col*50}px -${row*50}px;
+                background-size:600px 1200px;
+                cursor:pointer;border:2px solid #3a342a;border-radius:6px;
+                transition:border-color 0.15s,transform 0.15s;
+                box-sizing:content-box;
+            `;
+            cell.title = `Ряд ${row+1}, колонка ${col+1}`;
+            cell.onmouseover = () => { cell.style.borderColor='#ffaa44'; cell.style.transform='scale(1.1)'; };
+            cell.onmouseout  = () => { cell.style.borderColor='#3a342a'; cell.style.transform='scale(1)'; };
+            cell.onclick = () => {
+                onSelect(row, col);
+                picker.remove();
+            };
+            grid.appendChild(cell);
+        }
+    }
+
+    // Позиционируем
+    const btnRect = buttonEl.getBoundingClientRect();
+    let top = btnRect.bottom + 6;
+    let left = btnRect.left;
+    if (top + 460 > window.innerHeight) top = btnRect.top - 466;
+    if (left + 520 > window.innerWidth) left = window.innerWidth - 526;
+    if (left < 5) left = 5;
+    picker.style.top = top + 'px';
+    picker.style.left = left + 'px';
+
+    // Закрытие кликом снаружи
+    setTimeout(() => {
+        const closeOutside = e => {
+            if (!picker.contains(e.target) && !buttonEl.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('click', closeOutside);
+            }
+        };
+        document.addEventListener('click', closeOutside);
+    }, 100);
+}
+
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 async function initMap() {
     await loadMapData();
@@ -678,24 +768,24 @@ async function initMap() {
     document.getElementById('saveEditLocationBtn')?.addEventListener('click', saveEditLocation);
     document.getElementById('deleteLocationBtn')?.addEventListener('click', deleteCurrentLocation);
 
-    document.getElementById('selectLocIconBtn')?.addEventListener('click', () => {
-        if (typeof showIconPickerIcons !== 'undefined') {
-            showIconPickerIcons((row, col) => {
-                document.getElementById('newLocIconRow').value = row;
-                document.getElementById('newLocIconCol').value = col;
-                document.getElementById('locIconPreview').innerHTML = `✅ Ряд ${row+1}, колонка ${col+1}`;
-            }, document.getElementById('selectLocIconBtn'), { title: 'Иконка локации' });
-        }
+    // Пикер иконки для новой локации
+    document.getElementById('selectMapIconBtn')?.addEventListener('click', function() {
+        showMapIconPicker((row, col) => {
+            document.getElementById('newLocMapIconRow').value = row;
+            document.getElementById('newLocMapIconCol').value = col;
+            const prev = document.getElementById('newLocMapIconPreview');
+            if (prev) { prev.style.setProperty('--mr', row); prev.style.setProperty('--mc', col); }
+        }, this);
     });
 
-    document.getElementById('editSelectLocIconBtn')?.addEventListener('click', () => {
-        if (typeof showIconPickerIcons !== 'undefined') {
-            showIconPickerIcons((row, col) => {
-                document.getElementById('editLocIconRow').value = row;
-                document.getElementById('editLocIconCol').value = col;
-                document.getElementById('editLocIconPreview').innerHTML = `✅ Ряд ${row+1}, колонка ${col+1}`;
-            }, document.getElementById('editSelectLocIconBtn'), { title: 'Иконка локации' });
-        }
+    // Пикер иконки для редактирования локации
+    document.getElementById('editSelectMapIconBtn')?.addEventListener('click', function() {
+        showMapIconPicker((row, col) => {
+            document.getElementById('editLocMapIconRow').value = row;
+            document.getElementById('editLocMapIconCol').value = col;
+            const prev = document.getElementById('editLocMapIconPreview');
+            if (prev) { prev.style.setProperty('--mr', row); prev.style.setProperty('--mc', col); }
+        }, this);
     });
 
     centerMapFromUrl();

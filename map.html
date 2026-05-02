@@ -54,31 +54,19 @@
             background-position:center top;
         }
 
-        /* ===== ТОЧКИ ЛОКАЦИЙ ===== */
+        /* ===== ИКОНКИ ЛОКАЦИЙ ===== */
         .location-node{
             position:absolute;
             cursor:pointer;
-            display:flex;flex-direction:column;align-items:center;gap:3px;
+            display:flex;flex-direction:column;align-items:center;gap:4px;
             z-index:10;
             transform:translate(-50%,-50%);
             transition:transform 0.15s;
         }
-        .location-node:hover{transform:translate(-50%,-50%) scale(1.25);}
+        .location-node:hover{transform:translate(-50%,-50%) scale(1.18);}
         .location-node.editable{cursor:move;}
-        .location-node.dragging{opacity:0.8;z-index:1000;transition:none;}
+        .location-node.dragging{opacity:0.85;z-index:1000;transition:none;}
         .location-node.dragging:hover{transform:translate(-50%,-50%);}
-
-        .loc-pin{
-            width:14px;height:14px;border-radius:50%;
-            border:2px solid rgba(0,0,0,0.5);
-            box-shadow:0 0 6px rgba(0,0,0,0.6);
-            flex-shrink:0;transition:width 0.15s,height 0.15s;
-        }
-        .location-node:hover .loc-pin{width:18px;height:18px;}
-
-        .loc-pin.green{background:#44cc66;border-color:#1a7a38;box-shadow:0 0 8px rgba(68,204,102,0.7);}
-        .loc-pin.yellow{background:#e8d63a;border-color:#a89020;box-shadow:0 0 8px rgba(232,214,58,0.7);}
-        .loc-pin.red{background:#e84444;border-color:#a82020;box-shadow:0 0 8px rgba(232,68,68,0.7);}
 
         .loc-label{
             font-size:11px;font-weight:bold;
@@ -168,6 +156,50 @@
         .edit-location-btn:hover{background:#88ccff!important;}
 
         .icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0)*-28px) calc(var(--row,0)*-28px);display:inline-block;vertical-align:middle;}
+
+        /* ===== ИКОНКИ ЛОКАЦИЙ ИЗ iconmap.png (9×12, каждая 50×50px) ===== */
+        /* Базовый класс: всегда ровно 50×50 чтобы не захватывать соседние иконки спрайта.
+           Масштабирование — только через transform:scale(), размер блока не меняется. */
+        .loc-icon-map{
+            width:50px;height:50px;
+            background-image:url('img/iconmap.png');
+            background-repeat:no-repeat;
+            background-position:calc(var(--mc,11) * -50px) calc(var(--mr,8) * -50px);
+            background-size:600px 1200px;
+            flex-shrink:0;
+            filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));
+            transition:transform 0.15s;
+            transform:scale(0.72); /* ~36px визуально, но спрайт точно 50×50 */
+            transform-origin:center center;
+        }
+        .location-node:hover .loc-icon-map{
+            transform:scale(0.88); /* чуть крупнее при наведении */
+        }
+
+        /* Иконка в модалке — крупнее, но спрайт всё ещё ровно 50×50 */
+        .loc-icon-modal{
+            width:50px;height:50px;
+            background-size:600px 1200px;
+            background-position:calc(var(--mc,11) * -50px) calc(var(--mr,8) * -50px);
+            margin:0 auto 8px;
+            transform:scale(1.5); /* ~75px визуально */
+            transform-origin:center center;
+            filter:drop-shadow(0 0 8px rgba(199,186,0,0.5));
+            /* Компенсируем margin из-за scale */
+            margin-bottom:32px !important;
+            margin-top:8px !important;
+        }
+
+        /* Превью в форме редактирования — ровно 50×50, без scale */
+        .map-icon-picker-preview{
+            width:50px;height:50px;
+            background-image:url('img/iconmap.png');
+            background-repeat:no-repeat;
+            background-position:calc(var(--mc,11) * -50px) calc(var(--mr,8) * -50px);
+            background-size:600px 1200px;
+            display:inline-block;
+            flex-shrink:0;
+        }
         @keyframes modalFadeIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
         @media(max-width:768px){.top-bar{flex-direction:column;}.map-canvas-wrapper{height:50vh;}.loc-label{font-size:9px;max-width:80px;}}
     </style>
@@ -245,11 +277,13 @@
             </select>
         </div>
         <div class="form-group">
-            <label>🎨 Иконка</label>
-            <button type="button" class="cat-btn" id="selectLocIconBtn">Выбрать иконку</button>
-            <div id="locIconPreview" class="icon-preview">❌ Не выбрано</div>
-            <input type="hidden" id="newLocIconRow" value="3">
-            <input type="hidden" id="newLocIconCol" value="10">
+            <label>🗺️ Иконка локации</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <div class="map-icon-picker-preview" id="newLocMapIconPreview" style="--mr:8;--mc:11;"></div>
+                <button type="button" class="cat-btn" id="selectMapIconBtn">🎨 Выбрать иконку</button>
+            </div>
+            <input type="hidden" id="newLocMapIconRow" value="8">
+            <input type="hidden" id="newLocMapIconCol" value="11">
         </div>
         <div class="form-group"><label>📝 Описание</label><textarea id="newLocDescription" rows="3" placeholder="Описание локации..."></textarea></div>
         <div class="form-group">
@@ -278,11 +312,13 @@
             </select>
         </div>
         <div class="form-group">
-            <label>🎨 Иконка</label>
-            <button type="button" class="cat-btn" id="editSelectLocIconBtn">Выбрать иконку</button>
-            <div id="editLocIconPreview" class="icon-preview">❌ Не выбрано</div>
-            <input type="hidden" id="editLocIconRow" value="3">
-            <input type="hidden" id="editLocIconCol" value="10">
+            <label>🗺️ Иконка локации</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <div class="map-icon-picker-preview" id="editLocMapIconPreview" style="--mr:8;--mc:11;"></div>
+                <button type="button" class="cat-btn" id="editSelectMapIconBtn">🎨 Выбрать иконку</button>
+            </div>
+            <input type="hidden" id="editLocMapIconRow" value="8">
+            <input type="hidden" id="editLocMapIconCol" value="11">
         </div>
         <div class="form-group"><label>📝 Описание</label><textarea id="editLocDescription" rows="3" placeholder="Описание локации..."></textarea></div>
         <div class="form-group">
