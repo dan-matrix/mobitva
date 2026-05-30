@@ -74,7 +74,6 @@
             max-width:130px;text-align:center;
             overflow:hidden;text-overflow:ellipsis;
         }
-        /* Цвет подписей зависит от фона */
         #mapCanvas.bg-grid .loc-label{
             color:#ffeeaa;
             text-shadow:1px 1px 3px rgba(0,0,0,1),-1px -1px 3px rgba(0,0,0,1),0 0 6px rgba(0,0,0,1);
@@ -93,7 +92,6 @@
         /* ===== SVG ТРОПЫ ===== */
         svg.map-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;}
 
-        /* На пергаменте тропы коричневые */
         #mapCanvas.bg-parchment svg.map-svg .conn-line{stroke:rgba(100,55,0,0.5)!important;stroke-dasharray:8 5;}
         #mapCanvas.bg-parchment svg.map-svg .conn-line:not([stroke="#8a7a40"]){stroke:rgba(100,55,0,0.5)!important;}
 
@@ -116,6 +114,8 @@
         .zoom-level{background:rgba(0,0,0,0.75);padding:3px 8px;border-radius:16px;font-size:11px;color:#c7ba00;text-align:center;}
 
         /* ===== МОДАЛКИ ===== */
+        .modal{display:none;position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;}
+
         .choice-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:350px;max-width:90%;text-align:center;}
         .choice-modal h3{color:#d4b35a;margin-bottom:20px;}
         .choice-buttons{display:flex;gap:15px;justify-content:center;}
@@ -133,6 +133,18 @@
         .modal-buttons button{padding:10px 20px;}
         .icon-preview{margin-top:6px;font-size:12px;color:#c7ba00;}
 
+        /* ===== МОДАЛКА ТРОПЫ ===== */
+        .trail-edit-modal{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;padding:25px;width:380px;max-width:92%;}
+        .trail-edit-modal h3{color:#d4b35a;margin-bottom:8px;text-align:center;font-size:18px;}
+        .trail-style-option{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:0.2s;margin-bottom:8px;}
+        .trail-style-option:hover{background:#2a2420;border-color:#c7ba00;}
+        .trail-style-option.selected{background:#2a2420;border-color:#ffaa44;}
+        .trail-style-option input[type="radio"]{accent-color:#c7ba00;width:16px;height:16px;flex-shrink:0;}
+        .trail-dot{width:50px;height:6px;border-radius:3px;flex-shrink:0;}
+        .trail-info-name{font-weight:bold;font-size:13px;}
+        .trail-info-desc{font-size:11px;color:#888;margin-top:2px;}
+
+        /* ===== ПРОСМОТР ЛОКАЦИИ ===== */
         .location-modal-content{background:linear-gradient(145deg,#1e1a14,#0a0806);border:2px solid #c7ba00;border-radius:24px;width:400px;max-width:92%;animation:modalFadeIn 0.2s ease;}
         .location-modal-header{background:linear-gradient(135deg,#2a2420,#1a1612);padding:20px;border-radius:22px 22px 0 0;border-bottom:2px solid #c7ba00;text-align:center;position:relative;}
         .location-modal-close{position:absolute;top:12px;right:18px;font-size:26px;cursor:pointer;color:#c7ba00;transition:0.2s;}
@@ -157,9 +169,7 @@
 
         .icon-from-icons{width:28px;height:28px;background-image:url('img/icons.png');background-repeat:no-repeat;background-position:calc(var(--col,0)*-28px) calc(var(--row,0)*-28px);display:inline-block;vertical-align:middle;}
 
-        /* ===== ИКОНКИ ЛОКАЦИЙ ИЗ iconmap.png (9×12, каждая 50×50px) ===== */
-        /* Базовый класс: всегда ровно 50×50 чтобы не захватывать соседние иконки спрайта.
-           Масштабирование — только через transform:scale(), размер блока не меняется. */
+        /* ===== ИКОНКИ ЛОКАЦИЙ ===== */
         .loc-icon-map{
             width:50px;height:50px;
             background-image:url('img/iconmap.png');
@@ -169,28 +179,23 @@
             flex-shrink:0;
             filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));
             transition:transform 0.15s;
-            transform:scale(0.72); /* ~36px визуально, но спрайт точно 50×50 */
+            transform:scale(0.72);
             transform-origin:center center;
         }
-        .location-node:hover .loc-icon-map{
-            transform:scale(0.88); /* чуть крупнее при наведении */
-        }
+        .location-node:hover .loc-icon-map{transform:scale(0.88);}
 
-        /* Иконка в модалке — крупнее, но спрайт всё ещё ровно 50×50 */
         .loc-icon-modal{
             width:50px;height:50px;
             background-size:600px 1200px;
             background-position:calc(var(--mc,11) * -50px) calc(var(--mr,8) * -50px);
             margin:0 auto 8px;
-            transform:scale(1.5); /* ~75px визуально */
+            transform:scale(1.5);
             transform-origin:center center;
             filter:drop-shadow(0 0 8px rgba(199,186,0,0.5));
-            /* Компенсируем margin из-за scale */
             margin-bottom:32px !important;
             margin-top:8px !important;
         }
 
-        /* Превью в форме редактирования — ровно 50×50, без scale */
         .map-icon-picker-preview{
             width:50px;height:50px;
             background-image:url('img/iconmap.png');
@@ -200,6 +205,17 @@
             display:inline-block;
             flex-shrink:0;
         }
+
+        /* ===== ПОДСКАЗКА В РЕЖИМЕ РЕДАКТИРОВАНИЯ ===== */
+        .edit-hint{
+            display:none;
+            position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
+            background:rgba(0,0,0,0.85);border:1px solid #c7ba00;border-radius:10px;
+            padding:6px 14px;font-size:11px;color:#c7ba00;white-space:nowrap;
+            pointer-events:none;z-index:200;
+        }
+        .edit-mode-active .edit-hint{display:block;}
+
         @keyframes modalFadeIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
         @media(max-width:768px){.top-bar{flex-direction:column;}.map-canvas-wrapper{height:50vh;}.loc-label{font-size:9px;max-width:80px;}}
     </style>
@@ -228,7 +244,6 @@
                     <div><div class="admin-name" id="userName"></div><div class="admin-role">Пользователь</div></div>
                 </div>
                 <div class="admin-actions">
-                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
                     <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
                 </div>
             </div>
@@ -245,9 +260,10 @@
         <button class="cat-btn" onclick="location.reload()">🔄 Обновить</button>
     </div>
 
-    <div class="map-editor-container">
+    <div class="map-editor-container" id="mapEditorContainer">
         <div class="map-canvas-wrapper" id="canvasWrapper">
-            <div id="mapCanvas" class="bg-grid"></div>
+            <div id="mapCanvas" class="bg-image"></div>
+            
         </div>
         <div class="zoom-controls">
             <button class="zoom-btn" id="zoomInBtn">+</button>
@@ -260,7 +276,7 @@
     </div>
 </div>
 
-<!-- Модалка локации -->
+<!-- Модалка локации (просмотр) -->
 <div id="locationModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.82);backdrop-filter:blur(4px);align-items:center;justify-content:center;"></div>
 
 <!-- Модалка добавления локации -->
@@ -334,9 +350,113 @@
     </div>
 </div>
 
+<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ СТИЛЯ ТРОПЫ ===== -->
+<div id="trailEditModal" class="modal" style="display:none;">
+    <div class="trail-edit-modal">
+        <h3>🛤️ Стиль тропы</h3>
+
+        <!-- Название тропы (откуда → куда) -->
+        <div id="trailEditTitle" style="text-align:center;color:#888;font-size:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #3a342a;"></div>
+
+        <input type="hidden" id="trailEditConnId">
+
+        <!-- Радио-кнопки с визуальным превью каждого стиля -->
+        <div style="margin-bottom:16px;">
+            <label style="display:block;margin-bottom:10px;color:#c7ba00;font-weight:bold;font-size:12px;">🎨 Выберите стиль:</label>
+
+            <label class="trail-style-option" id="trailOpt_dirt">
+                <input type="radio" name="trailStyle" value="dirt">
+                <div class="trail-dot" style="background:linear-gradient(90deg,#3b280a,#8a6e41,#3b280a);box-shadow:0 0 4px #8a6e4166;"></div>
+                <div>
+                    <div class="trail-info-name" style="color:#8a6e41;">🟤 Грунтовая</div>
+                    <div class="trail-info-desc">Обычная земляная дорога</div>
+                </div>
+            </label>
+
+            <label class="trail-style-option" id="trailOpt_stone">
+                <input type="radio" name="trailStyle" value="stone">
+                <div class="trail-dot" style="background:linear-gradient(90deg,#2a2a2a,#b0b0b0,#2a2a2a);box-shadow:0 0 4px #b0b0b066;"></div>
+                <div>
+                    <div class="trail-info-name" style="color:#b0b0b0;">⚫ Каменная</div>
+                    <div class="trail-info-desc">Мощёная камнем тропа</div>
+                </div>
+            </label>
+
+            <label class="trail-style-option" id="trailOpt_grass">
+                <input type="radio" name="trailStyle" value="grass">
+                <div class="trail-dot" style="background:linear-gradient(90deg,#1a4020,#70c044,#1a4020);box-shadow:0 0 4px #70c04466;"></div>
+                <div>
+                    <div class="trail-info-name" style="color:#70c044;">🟢 Травяная</div>
+                    <div class="trail-info-desc">Зелёная травяная тропка</div>
+                </div>
+            </label>
+
+            <label class="trail-style-option" id="trailOpt_danger">
+                <input type="radio" name="trailStyle" value="danger">
+                <div class="trail-dot" style="background:linear-gradient(90deg,#6a1010,#ff9090,#6a1010);box-shadow:0 0 4px #ff909066;"></div>
+                <div>
+                    <div class="trail-info-name" style="color:#ff9090;">🔴 Опасная</div>
+                    <div class="trail-info-desc">Опасный маршрут</div>
+                </div>
+            </label>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="cat-btn" id="saveTrailEditBtn">💾 Сохранить</button>
+            <button class="cat-btn" onclick="closeTrailEditModal()">❌ Отмена</button>
+        </div>
+    </div>
+</div>
+
 <script src="js/db.js"></script>
 <script src="js/common.js"></script>
 <script src="js/icon-picker.js"></script>
 <script src="js/map.js"></script>
+
+<script>
+// Подсвечиваем выбранный вариант тропы при открытии модалки
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'trailStyle') {
+        document.querySelectorAll('.trail-style-option').forEach(el => el.classList.remove('selected'));
+        const label = document.getElementById('trailOpt_' + e.target.value);
+        if (label) label.classList.add('selected');
+    }
+});
+
+// Переопределяем openTrailEditModal чтобы сразу ставить radio и подсветку
+const _origOpenTrailEditModal = openTrailEditModal;
+openTrailEditModal = async function(connId) {
+    await _origOpenTrailEditModal(connId);
+    // После открытия — выставляем radio и подсветку
+    const sel = document.getElementById('trailStyleSelect');
+    const val = sel ? sel.value : 'dirt';
+    const radio = document.querySelector(`input[name="trailStyle"][value="${val}"]`);
+    if (radio) {
+        radio.checked = true;
+        document.querySelectorAll('.trail-style-option').forEach(el => el.classList.remove('selected'));
+        const label = document.getElementById('trailOpt_' + val);
+        if (label) label.classList.add('selected');
+    }
+};
+
+// Переопределяем saveTrailEdit чтобы брать значение из radio-группы
+const _origSaveTrailEdit = saveTrailEdit;
+saveTrailEdit = async function() {
+    const radio = document.querySelector('input[name="trailStyle"]:checked');
+    if (radio) {
+        const sel = document.getElementById('trailStyleSelect');
+        if (sel) sel.value = radio.value;
+    }
+    await _origSaveTrailEdit();
+};
+
+// Показываем подсказку в режиме редактирования
+const _origToggleEditMode = toggleEditMode;
+toggleEditMode = function() {
+    _origToggleEditMode();
+    const container = document.getElementById('mapEditorContainer');
+    if (container) container.classList.toggle('edit-mode-active');
+};
+</script>
 </body>
 </html>
