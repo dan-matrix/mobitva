@@ -533,11 +533,13 @@
                 const timeStr = formatTime(remaining);
                 const progressPercent = calculateProgress(timer.end_time, timer.duration);
                 const timerClass = isActive ? 'active-timer' : 'completed-timer';
+                // В свёрнутом состоянии показываем таймер или "ДОСТУПЕН"
+                const compactStatus = isActive ? timeStr : 'ДОСТУПЕН';
                 timersHtml += `
                     <div class="timer-item-compact ${timerClass}" data-timer-id="${timer.id}" data-character-id="${char.id}" onclick="toggleTimerExpand(this)">
                         <div class="timer-header-compact">
                             <span class="timer-name-compact">${escapeHtml(timer.quest_name)}</span>
-                            <span class="timer-status-compact ${isActive ? 'active' : 'inactive'}">${isActive ? 'АКТИВЕН' : 'ЗАВЕРШЁН'}</span>
+                            <span class="timer-status-compact ${isActive ? 'active' : 'inactive'}">${compactStatus}</span>
                         </div>
                         <div class="timer-details">
                             <div class="timer-time-compact" id="timer-time-${timer.id}">${timeStr}</div>
@@ -572,21 +574,45 @@
                 let activeCount = 0;
                 for (const timer of timers) {
                     const remaining = timer.end_time - Date.now();
+                    const isActive = timer.is_active && remaining > 0;
+                    const timeStr = formatTime(remaining);
+                    
+                    // Обновляем время в развёрнутом состоянии
                     const timeSpan = document.getElementById(`timer-time-${timer.id}`);
+                    if (timeSpan) timeSpan.textContent = timeStr;
+                    
+                    // Обновляем прогресс-бар
                     const progressBar = document.getElementById(`timer-progress-${timer.id}`);
-                    const statusSpan = document.querySelector(`.timer-item-compact[data-timer-id="${timer.id}"] .timer-status-compact`);
-                    if (timeSpan) timeSpan.textContent = formatTime(remaining);
                     if (progressBar) progressBar.style.width = `${calculateProgress(timer.end_time, timer.duration)}%`;
-                    if (remaining > 0 && timer.is_active) activeCount++;
+                    
+                    // Обновляем статус в свёрнутом состоянии
+                    const statusSpan = document.querySelector(`.timer-item-compact[data-timer-id="${timer.id}"] .timer-status-compact`);
+                    if (statusSpan) {
+                        if (isActive) {
+                            statusSpan.textContent = timeStr;
+                            statusSpan.classList.add('active');
+                            statusSpan.classList.remove('inactive');
+                        } else {
+                            statusSpan.textContent = 'ДОСТУПЕН';
+                            statusSpan.classList.add('inactive');
+                            statusSpan.classList.remove('active');
+                        }
+                    }
+                    
+                    if (isActive) activeCount++;
+                    
                     if (remaining <= 0 && timer.is_active && !timer.historyRecorded) {
                         timer.historyRecorded = true;
                         timer.is_active = false;
                         needsUpdate = true;
+                        
+                        // Обновляем статус на "ДОСТУПЕН"
                         if (statusSpan) {
-                            statusSpan.textContent = 'ЗАВЕРШЁН';
+                            statusSpan.textContent = 'ДОСТУПЕН';
                             statusSpan.classList.remove('active');
                             statusSpan.classList.add('inactive');
                         }
+                        
                         const flags = JSON.parse(localStorage.getItem('timerHistoryFlags') || '{}');
                         flags[timer.id] = true;
                         localStorage.setItem('timerHistoryFlags', JSON.stringify(flags));
