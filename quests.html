@@ -436,7 +436,34 @@
             if (modal) modal.style.display = 'none';
             document.body.style.overflow = '';
         }
+        // ==================== ОТКРЫТИЕ ПО ПРЯМОЙ ССЫЛКЕ ====================
+        function openQuestByUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const questId = urlParams.get('id');
+            const openModal = urlParams.get('open');
+            
+            if (questId && openModal === 'modal') {
+                // Ждём загрузки квестов
+                const checkQuests = setInterval(() => {
+                    if (allQuests.length > 0) {
+                        clearInterval(checkQuests);
+                        const quest = allQuests.find(q => q.id == questId);
+                        if (quest) {
+                            setTimeout(() => {
+                                openQuestModal(quest.id);
+                            }, 500);
+                        }
+                    }
+                }, 100);
+            }
+        }
 
+        // Запускаем после загрузки квестов
+        const originalLoadQuests = loadQuests;
+        loadQuests = async function() {
+            await originalLoadQuests();
+            openQuestByUrl();
+        };
         async function saveTimerFromQuest() {
             const characterId = document.getElementById('timerCharacterSelect')?.value;
             const questName = document.getElementById('timerQuestName')?.value.trim();

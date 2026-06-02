@@ -63,7 +63,7 @@ function isAdmin() {
 }
 
 // Отображение панели в зависимости от роли
-function displayAdminPanel() {
+async function displayAdminPanel() {
     const user = checkAuth();
     const ap = document.getElementById('adminPanel');
     const up = document.getElementById('userPanel');
@@ -110,6 +110,9 @@ function displayAdminPanel() {
     initNotificationBell();
     initHotkeys();
     initSound();
+
+    // Проверяем завершённые таймеры на каждой странице
+    await checkExpiredTimers();
 }
 
 // Выход из аккаунта (использует async logout из db.js)
@@ -273,6 +276,67 @@ function initHotkeys() {
     });
 }
 
+// ==================== ФОНОВАЯ ПРОВЕРКА ТАЙМЕРОВ ====================
+async function checkExpiredTimers() {
+    const user = getSession();
+    if (!user) return;
+
+    if (window._checkExpiredTimersRunning) return;
+    window._checkExpiredTimersRunning = true;
+
+    try {
+        await ensureDb();
+
+        const characters = await getUserCharacters(user.login);
+        if (!characters || characters.length === 0) return;
+
+        const now = Date.now();
+        const savedFlags = JSON.parse(localStorage.getItem('timerHistoryFlags') || '{}');
+        let flagsChanged = false;
+
+        for (const char of characters) {
+            const timers = await getCharacterTimers(char.id);
+            if (!timers || timers.length === 0) continue;
+
+            for (const timer of timers) {
+                if (!timer.is_active) continue;
+
+                const remaining = timer.end_time - now;
+
+                if (remaining <= 0 && !savedFlags[timer.id]) {
+                    // Сразу ставим флаг чтобы не было дублей
+                    savedFlags[timer.id] = true;
+                    flagsChanged = true;
+
+                    addNotification(`⏰ Таймер завершён! [${char.name}] — ${timer.quest_name}`);
+                    playNotificationSound();
+
+                    await addTimerHistory({
+                        timer_id: timer.id,
+                        character_id: char.id,
+                        quest_name: timer.quest_name,
+                        start_time: new Date(timer.end_time - timer.duration).toISOString(),
+                        end_time: new Date(timer.end_time).toISOString(),
+                        duration: timer.duration,
+                        notes: timer.notes || ''
+                    });
+
+                    await toggleTimerActive(timer.id, false);
+                }
+            }
+        }
+
+        if (flagsChanged) {
+            localStorage.setItem('timerHistoryFlags', JSON.stringify(savedFlags));
+        }
+
+    } catch (e) {
+        console.error('checkExpiredTimers error:', e);
+    } finally {
+        window._checkExpiredTimersRunning = false;
+    }
+}
+
 // ==================== УВЕДОМЛЕНИЯ ====================
 
 let notifications = [];
@@ -292,7 +356,7 @@ function addBellToHeader() {
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                 </svg>
             </div>
-            <div class="bell-badge" style="display:none;">0</div>
+            <div class="bell-badge" id="notificationBadge" style="display:none;">0</div>
             <div class="notification-dropdown" id="notificationDropdown">
                 <div class="notification-header">
                     <span>🔔 Уведомления (<span id="unreadCount">0</span>)</span>
@@ -320,6 +384,26 @@ function addBellToHeader() {
     });
 }
 
+function addNotification(text) {
+    try {
+        const saved = localStorage.getItem('mb_notifications');
+        if (saved) notifications = JSON.parse(saved);
+    } catch { notifications = []; }
+
+    notifications.unshift({
+        text,
+        time: new Date().toLocaleTimeString(),
+        read: false
+    });
+
+    // Храним максимум 50 уведомлений
+    if (notifications.length > 50) notifications = notifications.slice(0, 50);
+
+    localStorage.setItem('mb_notifications', JSON.stringify(notifications));
+    updateNotificationBadge();
+}
+
+window.addNotification = addNotification;
 function initNotificationBell() {
     try {
         const saved = localStorage.getItem('mb_notifications');

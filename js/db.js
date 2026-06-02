@@ -316,7 +316,21 @@ async function toggleTimerActive(id, isActive) {
 async function addTimerHistory(historyItem) {
     await ensureDb();
     const user = getCurrentUser();
-    const { data, error } = await db.from('timer_history').insert({ ...historyItem, user_id: user ? user.login : null }).select();
+
+    // Защита от дублей
+    const { data: existing } = await db
+        .from('timer_history')
+        .select('id')
+        .eq('timer_id', historyItem.timer_id)
+        .eq('end_time', historyItem.end_time)
+        .maybeSingle();
+
+    if (existing) return null;
+
+    const { data, error } = await db
+        .from('timer_history')
+        .insert({ ...historyItem, user_id: user ? user.login : null })
+        .select();
     return error ? null : data;
 }
 async function getTimerHistory(characterId = null, limit = 100) {
@@ -346,4 +360,90 @@ async function clearTimerHistory(characterId = null) {
     if (characterId) query = query.eq('character_id', characterId);
     const { error } = await query;
     return !error;
+}
+
+// ==================== ЗАМЕТКИ ПОЛЬЗОВАТЕЛЯ ====================
+async function getUserNote(userLogin) {
+    await ensureDb();
+    const { data, error } = await db
+        .from('user_notes')
+        .select('*')
+        .eq('user_id', userLogin)
+        .maybeSingle();
+    return error ? null : data;
+}
+
+async function saveUserNote(userLogin, content) {
+    await ensureDb();
+    const existing = await getUserNote(userLogin);
+    if (existing) {
+        const { error } = await db
+            .from('user_notes')
+            .update({ content, updated_at: new Date().toISOString() })
+            .eq('user_id', userLogin);
+        return !error;
+    } else {
+        const { error } = await db
+            .from('user_notes')
+            .insert({ user_id: userLogin, content });
+        return !error;
+    }
+}
+
+// ==================== ИЗБРАННЫЕ КВЕСТЫ ====================
+async function getFavoriteQuests(userLogin) {
+    await ensureDb();
+    const { data, error } = await db
+        .from('user_favorite_quests')
+        .select('*')
+        .eq('user_id', userLogin)
+        .order('added_at', { ascending: false });
+    return error ? [] : data;
+}
+
+async function addFavoriteQuest(userLogin, questId) {
+    await ensureDb();
+    const { data: existing } = await db
+        .from('user_favorite_quests')
+        .select('id')
+        .eq('user_id', userLogin)
+        .eq('quest_id', questId)
+        .maybeSingle();
+    if (existing) return false;
+    const { error } = await db
+        .from('user_favorite_quests')
+        .insert({ user_id: userLogin, quest_id: questId });
+    return !error;
+}
+
+async function removeFavoriteQuest(userLogin, questId) {
+    await ensureDb();
+    const { error } = await db
+        .from('user_favorite_quests')
+        .delete()
+        .eq('user_id', userLogin)
+        .eq('quest_id', questId);
+    return !error;
+}
+
+// ==================== ЛИДЕРЫ ====================
+async function getLeaderboard() {
+    await ensureDb();
+    const { data, error } = await db
+        .from('timer_history')
+        .select('user_id')
+        .order('user_id');
+    if (error || !data) return [];
+
+    const counts = {};
+    for (const row of data) {
+        if (!row.user_id) continue;
+        counts[row.user_id] = (counts[row.user_id] || 0) + 1;
+    }
+
+    const sorted = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+    return sorted.map(([login, count]) => ({ login, count }));
 }
