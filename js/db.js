@@ -259,13 +259,29 @@ async function deleteLocationMobsByLocationId(locationId) { await ensureDb(); co
 // ==================== ПЕРСОНАЖИ (user_id = login) ====================
 async function getUserCharacters(userLogin) {
     await ensureDb();
-    const { data, error } = await db.from('user_characters').select('*').eq('user_id', userLogin);
+    const { data, error } = await db
+        .from('user_characters')
+        .select('*')
+        .eq('user_id', userLogin)
+        .order('order_index', { ascending: true });
     if (error) { console.error('getUserCharacters:', error); return []; }
     return data;
 }
 async function addCharacter(userLogin, name) {
     await ensureDb();
-    const { data, error } = await db.from('user_characters').insert([{ user_id: userLogin, name }]).select();
+    // Получаем максимальный order_index
+    const { data: existing } = await db
+        .from('user_characters')
+        .select('order_index')
+        .eq('user_id', userLogin)
+        .order('order_index', { ascending: false })
+        .limit(1);
+    const maxOrder = existing && existing.length > 0 ? (existing[0].order_index || 0) : 0;
+    
+    const { data, error } = await db
+        .from('user_characters')
+        .insert([{ user_id: userLogin, name, order_index: maxOrder + 1 }])
+        .select();
     if (error) { console.error('addCharacter:', error); return null; }
     return data[0];
 }
@@ -283,14 +299,37 @@ async function deleteCharacter(id) {
 // ==================== ТАЙМЕРЫ ====================
 async function getCharacterTimers(characterId) {
     await ensureDb();
-    const { data, error } = await db.from('user_timers').select('*').eq('character_id', characterId);
+    const { data, error } = await db
+        .from('user_timers')
+        .select('*')
+        .eq('character_id', characterId)
+        .order('order_index', { ascending: true });
     if (error) { console.error('getCharacterTimers:', error); return []; }
     return data;
 }
 async function addTimer(characterId, questName, endTime, duration, notes = '') {
     await ensureDb();
-    const { data, error } = await db.from('user_timers')
-        .insert([{ character_id: characterId, quest_name: questName, end_time: endTime, duration, notes, is_active: true }]).select();
+    // Получаем максимальный order_index для таймеров этого персонажа
+    const { data: existing } = await db
+        .from('user_timers')
+        .select('order_index')
+        .eq('character_id', characterId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+    const maxOrder = existing && existing.length > 0 ? (existing[0].order_index || 0) : 0;
+    
+    const { data, error } = await db
+        .from('user_timers')
+        .insert([{ 
+            character_id: characterId, 
+            quest_name: questName, 
+            end_time: endTime, 
+            duration, 
+            notes, 
+            is_active: true,
+            order_index: maxOrder + 1
+        }])
+        .select();
     if (error) { console.error('addTimer:', error); return null; }
     return data[0];
 }
@@ -311,7 +350,26 @@ async function toggleTimerActive(id, isActive) {
     const { error } = await db.from('user_timers').update({ is_active: isActive }).eq('id', id);
     return !error;
 }
+// ==================== ПОРЯДОК ПЕРСОНАЖЕЙ И ТАЙМЕРОВ ====================
+async function updateCharacterOrder(characterId, orderIndex) {
+    await ensureDb();
+    const { error } = await db
+        .from('user_characters')
+        .update({ order_index: orderIndex })
+        .eq('id', characterId);
+    if (error) console.error('updateCharacterOrder:', error);
+    return !error;
+}
 
+async function updateTimerOrder(timerId, orderIndex) {
+    await ensureDb();
+    const { error } = await db
+        .from('user_timers')
+        .update({ order_index: orderIndex })
+        .eq('id', timerId);
+    if (error) console.error('updateTimerOrder:', error);
+    return !error;
+}
 // ==================== ИСТОРИЯ ТАЙМЕРОВ ====================
 async function addTimerHistory(historyItem) {
     await ensureDb();
@@ -429,21 +487,7 @@ async function removeFavoriteQuest(userLogin, questId) {
 // ==================== ЛИДЕРЫ ====================
 async function getLeaderboard() {
     await ensureDb();
-    const { data, error } = await db
-        .from('timer_history')
-        .select('user_id')
-        .order('user_id');
-    if (error || !data) return [];
-
-    const counts = {};
-    for (const row of data) {
-        if (!row.user_id) continue;
-        counts[row.user_id] = (counts[row.user_id] || 0) + 1;
-    }
-
-    const sorted = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-
-    return sorted.map(([login, count]) => ({ login, count }));
+    const { data, error } = await db.rpc('get_leaderboard');
+    if (error) { console.error('getLeaderboard:', error); return []; }
+    return data || [];
 }

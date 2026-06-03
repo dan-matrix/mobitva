@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="img/books.png">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 
 <body>
@@ -70,15 +71,16 @@
         <div class="notes-updated" id="notesUpdated"></div>
     </div>
 
-    <!-- ==================== ИЗБРАННЫЕ КВЕСТЫ ==================== -->
+    <!-- ==================== МОИ КВЕСТЫ ==================== -->
     <div class="fav-quests-block">
         <div class="fav-quests-header">
             <div class="fav-quests-title">⭐ МОИ КВЕСТЫ</div>
-            <button class="add-fav-quest-btn" onclick="openFavQuestSearch()">➕ ДОБАВИТЬ</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="add-fav-quest-btn" onclick="openFavQuestSearch()">📚 ДОБАВИТЬ КВЕСТ</button>
+                <button class="add-fav-quest-btn" onclick="openAddCharModal()">➕ ДОБАВИТЬ ПЕРСОНАЖА</button>
+            </div>
         </div>
-        <div id="favQuestsList">
-            <div class="fav-quests-empty">📭 Нет избранных квестов. Нажми ➕ чтобы добавить.</div>
-        </div>
+        <div id="profile-container"></div>
     </div>
 
     <!-- ==================== ТАБЛИЦА ЛИДЕРОВ ==================== -->
@@ -89,19 +91,10 @@
         </div>
     </div>
 
-    <!-- ==================== ТАЙМЕРЫ ==================== -->
-
-    <div class="characters-container" id="charactersContainer">
-        <div class="profile-container" id="profile-container"></div>
-        <div style="margin-top:20px; text-align:center;">
-            <button class="add-character-btn" onclick="openAddCharModal()">➕ ДОБАВИТЬ СПИСОК ТАЙМЕРОВ</button>
-        </div>
-    </div>
-
+    <!-- Кнопки снизу -->
     <div style="margin-top:20px; text-align:center;">
         <button class="change-password-btn" onclick="openChangePasswordModal()">🔑 Сменить пароль</button>
-        <button class="change-password-btn" onclick="location.href='calculator.html'" style="background:linear-gradient(135deg,#6b6509,#615200);border:2px solid #ffdd88;">
-            🧮 КАЛЬКУЛЯТОР СУЩНОСТЕЙ</button>
+        <button class="change-password-btn" onclick="location.href='calculator.html'">🧮 КАЛЬКУЛЯТОР СУЩНОСТЕЙ</button>
     </div>
 </div>
 
@@ -254,13 +247,14 @@
 <div id="favQuestSearchModal" class="modal" style="display:none;">
     <div class="fav-quest-search-modal">
         <div class="fav-quest-search-header">
-            <h3>⭐ ДОБАВИТЬ КВЕСТ В ИЗБРАННОЕ</h3>
+            <h3>⭐ ДОБАВИТЬ КВЕСТ</h3>
             <div class="history-modal-close" onclick="closeFavQuestSearch()">✕</div>
         </div>
         <input type="text" class="fav-quest-search-input" id="favQuestSearchInput" placeholder="🔍 Поиск квеста...">
         <div class="fav-quest-search-list" id="favQuestSearchList"></div>
     </div>
 </div>
+
 <!-- Модалка квеста в профиле -->
 <div id="questModalProfile" class="modal" style="display:none;">
     <div class="quest-modal-inline">
@@ -315,6 +309,7 @@
         <div id="stagesDotsProfile" class="stages-dots-container" style="padding: 10px; display: flex; justify-content: center; gap: 8px;"></div>
     </div>
 </div>
+
 <script src="js/db.js"></script>
 <script src="js/common.js"></script>
 <script>
@@ -325,7 +320,9 @@
     let timersCache = {};
     let timerUpdateInterval = null;
     let allQuests = [];
-    let favoriteQuestIds = new Set();
+    let currentActiveCharId = null;
+    let sortableTabs = null;
+    let sortableTimers = {};
 
     const avatarList = ['👤','😀','😎','🥷','🧙','🦸','🐉','⚔️','🛡️','🏹','🔮','💀','👑','⭐','🔥','❄️','🌊','🌿','⚡','🌈'];
     const colorSchemes = [
@@ -344,7 +341,6 @@
         await Promise.all([
             loadStats(),
             loadNotes(),
-            loadFavoriteQuests(),
             loadLeaderboard()
         ]);
         allQuests = await getQuests();
@@ -424,41 +420,6 @@
         } else { alert('❌ Ошибка при сохранении заметок!'); }
     }
 
-    // ==================== ИЗБРАННЫЕ КВЕСТЫ ====================
-    async function loadFavoriteQuests() {
-        const favs = await getFavoriteQuests(currentUser.login);
-        favoriteQuestIds = new Set(favs.map(f => f.quest_id));
-        if (favs.length === 0) {
-            document.getElementById('favQuestsList').innerHTML = '<div class="fav-quests-empty">📭 Нет избранных квестов. Нажми ➕ чтобы добавить.</div>';
-            return;
-        }
-        if (allQuests.length === 0) allQuests = await getQuests();
-        let html = '';
-        for (const fav of favs) {
-            const quest = allQuests.find(q => q.id === fav.quest_id);
-            if (!quest) continue;
-            html += `<div class="fav-quest-item"><span class="fav-quest-name" onclick="goToQuest(${quest.id})">${escapeHtml(quest.name)}</span><span class="fav-quest-level">⭐ ${quest.level || '?'} ур.</span><button class="fav-quest-remove" onclick="removeFavQuest(${quest.id})">✕ Убрать</button></div>`;
-        }
-        document.getElementById('favQuestsList').innerHTML = html || '<div class="fav-quests-empty">📭 Квесты не найдены</div>';
-    }
-
-    function goToQuest(questId) {
-        closeQuestModalProfile();
-        openQuestModalProfile(questId);
-    }
-    async function removeFavQuest(questId) { await removeFavoriteQuest(currentUser.login, questId); await loadFavoriteQuests(); }
-    function openFavQuestSearch() { document.getElementById('favQuestSearchModal').style.display = 'flex'; document.body.style.overflow = 'hidden'; renderFavQuestSearchList(''); document.getElementById('favQuestSearchInput').focus(); }
-    function closeFavQuestSearch() { document.getElementById('favQuestSearchModal').style.display = 'none'; document.body.style.overflow = ''; }
-    async function renderFavQuestSearchList(search) {
-        if (allQuests.length === 0) allQuests = await getQuests();
-        const list = document.getElementById('favQuestSearchList');
-        const term = search.toLowerCase().trim();
-        const filtered = term ? allQuests.filter(q => q.name && q.name.toLowerCase().includes(term)) : allQuests.slice(0, 30);
-        if (filtered.length === 0) { list.innerHTML = '<div class="fav-quests-empty">🔍 Ничего не найдено</div>'; return; }
-        list.innerHTML = filtered.map(q => { const already = favoriteQuestIds.has(q.id); return `<div class="fav-quest-search-item ${already ? 'already-added' : ''}" onclick="${already ? '' : `addFavQuestHandler(${q.id})`}"><span class="fav-quest-search-name">${escapeHtml(q.name)}</span><span class="fav-quest-search-level">⭐ ${q.level || '?'} ур.</span><span class="fav-quest-search-add">${already ? '✅ Добавлен' : '➕'}</span></div>`; }).join('');
-    }
-    async function addFavQuestHandler(questId) { await addFavoriteQuest(currentUser.login, questId); favoriteQuestIds.add(questId); await loadFavoriteQuests(); renderFavQuestSearchList(document.getElementById('favQuestSearchInput').value); }
-
     // ==================== ЛИДЕРЫ ====================
     async function loadLeaderboard() {
         const leaders = await getLeaderboard();
@@ -466,6 +427,117 @@
         if (!leaders || leaders.length === 0) { container.innerHTML = '<div class="leaderboard-empty">📭 Нет данных</div>'; return; }
         const medals = ['🥇', '🥈', '🥉'];
         container.innerHTML = leaders.map((item, i) => { const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other'; const rankText = i < 3 ? medals[i] : `#${i + 1}`; const isMe = item.login === currentUser.login; return `<div class="leaderboard-item ${isMe ? 'me' : ''}"><div class="leaderboard-rank ${rankClass}">${rankText}</div><div class="leaderboard-login ${isMe ? 'me-label' : ''}">${escapeHtml(item.login)}</div><div class="leaderboard-count">⚔️ ${item.count} квестов</div></div>`; }).join('');
+    }
+
+    // ==================== ПОИСК КВЕСТОВ ДЛЯ ДОБАВЛЕНИЯ ====================
+    function isQuestAddedToActiveChar(questId) {
+        if (!currentActiveCharId) return false;
+        const quest = allQuests.find(q => q.id === questId);
+        if (!quest) return false;
+        const timers = timersCache[currentActiveCharId] || [];
+        return timers.some(t => t.quest_name === quest.name);
+    }
+
+    function openFavQuestSearch() {
+        if (characters.length === 0) {
+            alert('❌ Сначала создайте персонажа!\n\nНажмите "➕ ДОБАВИТЬ ПЕРСОНАЖА" в блоке "МОИ КВЕСТЫ"');
+            return;
+        }
+        
+        if (!currentActiveCharId) {
+            alert('❌ Выберите персонажа, которому хотите добавить квест');
+            return;
+        }
+        
+        const activeChar = characters.find(c => c.id === currentActiveCharId);
+        if (!activeChar) return;
+        
+        document.getElementById('favQuestSearchModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        renderFavQuestSearchList('');
+        document.getElementById('favQuestSearchInput').focus();
+    }
+
+    function closeFavQuestSearch() {
+        document.getElementById('favQuestSearchModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    async function renderFavQuestSearchList(search) {
+        if (allQuests.length === 0) allQuests = await getQuests();
+        const list = document.getElementById('favQuestSearchList');
+        const term = search.toLowerCase().trim();
+        const filtered = term ? allQuests.filter(q => q.name && q.name.toLowerCase().includes(term)) : allQuests.slice(0, 30);
+        
+        if (filtered.length === 0) { 
+            list.innerHTML = '<div class="fav-quests-empty">🔍 Ничего не найдено</div>'; 
+            return; 
+        }
+        
+        list.innerHTML = filtered.map(q => {
+            const alreadyAdded = isQuestAddedToActiveChar(q.id);
+            return `
+                <div class="fav-quest-search-item ${alreadyAdded ? 'already-added' : ''}" 
+                     onclick="${alreadyAdded ? '' : `addFavQuestHandler(${q.id})`}">
+                    <span class="fav-quest-search-name">${escapeHtml(q.name)}</span>
+                    <span class="fav-quest-search-level">⭐ ${q.level || '?'} ур.</span>
+                    <span class="fav-quest-search-add">${alreadyAdded ? '✅ Уже есть' : '➕'}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function addFavQuestHandler(questId) {
+        if (characters.length === 0) {
+            alert('❌ Сначала создайте персонажа!');
+            closeFavQuestSearch();
+            return;
+        }
+        
+        if (!currentActiveCharId) {
+            alert('❌ Выберите персонажа, которому хотите добавить квест');
+            closeFavQuestSearch();
+            return;
+        }
+        
+        const activeChar = characters.find(c => c.id === currentActiveCharId);
+        if (!activeChar) {
+            alert('❌ Ошибка: активный персонаж не найден');
+            return;
+        }
+        
+        const quest = allQuests.find(q => q.id === questId);
+        if (!quest) {
+            alert('❌ Квест не найден');
+            return;
+        }
+        
+        const alreadyAdded = timersCache[activeChar.id]?.some(t => t.quest_name === quest.name);
+        if (alreadyAdded) {
+            alert(`⚠️ Квест "${quest.name}" уже есть у персонажа "${activeChar.name}"`);
+            closeFavQuestSearch();
+            return;
+        }
+        
+        const cooldownMin = quest.cooldown_minutes || 60;
+        const totalMs = cooldownMin * 60 * 1000;
+        const endTime = Date.now() + totalMs;
+        
+        const newTimer = await addTimer(activeChar.id, quest.name, endTime, totalMs, quest.comment || '');
+        if (!newTimer) {
+            alert('❌ Ошибка при добавлении квеста!');
+            return;
+        }
+        
+        const freshTimers = await getCharacterTimers(activeChar.id);
+        timersCache[activeChar.id] = freshTimers.map(t => ({ 
+            ...t, 
+            historyRecorded: timersCache[activeChar.id]?.find(ot => ot.id === t.id)?.historyRecorded || false 
+        }));
+        
+        await renderProfile();
+        renderFavQuestSearchList(document.getElementById('favQuestSearchInput').value);
+        addNotification(`✅ Квест "${quest.name}" добавлен персонажу "${activeChar.name}"!`);
     }
 
     // ==================== ТАЙМЕРЫ ====================
@@ -499,7 +571,7 @@
         characters = await getUserCharacters(currentUser.login);
         const savedFlags = JSON.parse(localStorage.getItem('timerHistoryFlags') || '{}');
         const promises = characters.map(async char => {
-            const timers = await getCharacterTimers(char.id);
+            let timers = await getCharacterTimers(char.id);
             timersCache[char.id] = timers.map(t => ({ ...t, historyRecorded: savedFlags[t.id] || false }));
         });
         await Promise.all(promises);
@@ -514,32 +586,140 @@
         renderProfile();
     }
 
-    function toggleCharacterTimers(characterId) {
-        const card = document.querySelector(`.character-toggle-card[data-char-id="${characterId}"]`);
-        if (card) card.classList.toggle('expanded');
+    function switchCharTab(charId) {
+        currentActiveCharId = charId;
+        document.querySelectorAll('.char-tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (parseInt(tab.dataset.charId) === charId) tab.classList.add('active');
+        });
+        document.querySelectorAll('.char-content').forEach(content => {
+            content.classList.remove('active');
+            if (parseInt(content.dataset.charId) === charId) content.classList.add('active');
+        });
+    }
+
+    function goToQuest(questId) {
+        closeQuestModalProfile();
+        openQuestModalProfile(questId);
+    }
+
+    function initDragAndDrop() {
+        if (sortableTabs) { sortableTabs.destroy(); sortableTabs = null; }
+        for (const key in sortableTimers) { if (sortableTimers[key]) { sortableTimers[key].destroy(); delete sortableTimers[key]; } }
+        
+        const tabsContainer = document.querySelector('.characters-tabs');
+        if (tabsContainer) {
+            sortableTabs = new Sortable(tabsContainer, {
+                animation: 200,
+                handle: '.char-tab',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: async function() {
+                    const newOrder = [];
+                    document.querySelectorAll('.char-tab').forEach(tab => {
+                        const charId = parseInt(tab.dataset.charId);
+                        if (!isNaN(charId)) newOrder.push(charId);
+                    });
+                    if (newOrder.length === characters.length) {
+                        for (let i = 0; i < newOrder.length; i++) {
+                            if (typeof updateCharacterOrder === 'function') await updateCharacterOrder(newOrder[i], i);
+                        }
+                        const newCharacters = [];
+                        for (const id of newOrder) {
+                            const char = characters.find(c => c.id === id);
+                            if (char) newCharacters.push(char);
+                        }
+                        if (newCharacters.length === characters.length) {
+                            characters = newCharacters;
+                            const activeId = currentActiveCharId;
+                            await renderProfile();
+                            if (activeId) switchCharTab(activeId);
+                        }
+                    }
+                }
+            });
+        }
+        
+        for (const char of characters) {
+            const timersContainer = document.querySelector(`.char-content[data-char-id="${char.id}"] .timer-list-compact`);
+            if (timersContainer) {
+                sortableTimers[char.id] = new Sortable(timersContainer, {
+                    animation: 200,
+                    handle: '.timer-item-compact',
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    onEnd: async function() {
+                        const newOrder = [];
+                        timersContainer.querySelectorAll('.timer-item-compact').forEach(item => {
+                            const timerId = parseInt(item.dataset.timerId);
+                            if (!isNaN(timerId)) newOrder.push(timerId);
+                        });
+                        const timers = timersCache[char.id] || [];
+                        if (newOrder.length === timers.length) {
+                            for (let i = 0; i < newOrder.length; i++) {
+                                if (typeof updateTimerOrder === 'function') await updateTimerOrder(newOrder[i], i);
+                            }
+                            const newTimers = [];
+                            for (const id of newOrder) {
+                                const timer = timers.find(t => t.id === id);
+                                if (timer) newTimers.push(timer);
+                            }
+                            if (newTimers.length === timers.length) {
+                                timersCache[char.id] = newTimers;
+                            }
+                        }
+                    }
+                });
+            }
+        }
     }
 
     async function renderProfile() {
         const container = document.getElementById('profile-container');
         if (!container) return;
-        let html = '';
-        for (const char of characters) {
+        
+        if (characters.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">👋 Нет персонажей. Нажмите "Добавить персонажа"</div>';
+            return;
+        }
+        
+        let tabsHtml = '<div class="characters-tabs">';
+        let contentHtml = '';
+        
+        for (let i = 0; i < characters.length; i++) {
+            const char = characters[i];
             const timers = timersCache[char.id] || [];
-            let activeCount = timers.filter(t => t.is_active && (t.end_time - Date.now()) > 0).length;
+            const activeCount = timers.filter(t => t.is_active && (t.end_time - Date.now()) > 0).length;
+            const isActive = (currentActiveCharId === null && i === 0) || currentActiveCharId === char.id;
+            
+            if (currentActiveCharId === null && i === 0) currentActiveCharId = char.id;
+            
+            tabsHtml += `
+                <div class="char-tab ${isActive ? 'active' : ''}" data-char-id="${char.id}" onclick="switchCharTab(${char.id})">
+                    <span class="char-tab-avatar">${char.avatar || '👤'}</span>
+                    <span class="char-tab-name">${escapeHtml(char.name)}</span>
+                    <span class="char-tab-stats"><span class="active-count">${activeCount}</span>/${timers.length}</span>
+                </div>
+            `;
+            
             let timersHtml = '';
             for (const timer of timers) {
                 const remaining = timer.end_time - Date.now();
-                const isActive = timer.is_active && remaining > 0;
+                const isActiveTimer = timer.is_active && remaining > 0;
                 const timeStr = formatTime(remaining);
                 const progressPercent = calculateProgress(timer.end_time, timer.duration);
-                const timerClass = isActive ? 'active-timer' : 'completed-timer';
-                // В свёрнутом состоянии показываем таймер или "ДОСТУПЕН"
-                const compactStatus = isActive ? timeStr : 'ДОСТУПЕН';
+                const timerClass = isActiveTimer ? 'active-timer' : 'completed-timer';
+                const compactStatus = isActiveTimer ? timeStr : '✅ ДОСТУПЕН';
+                
+                const isLibraryQuest = allQuests.some(q => q.name === timer.quest_name);
+                const questId = allQuests.find(q => q.name === timer.quest_name)?.id;
+                const questButtonHtml = (isLibraryQuest && questId) ? `<button class="timer-btn-compact quest-btn" onclick="event.stopPropagation(); goToQuest(${questId})">📖 ЗАДАНИЕ</button>` : '';
+                
                 timersHtml += `
                     <div class="timer-item-compact ${timerClass}" data-timer-id="${timer.id}" data-character-id="${char.id}" onclick="toggleTimerExpand(this)">
                         <div class="timer-header-compact">
                             <span class="timer-name-compact">${escapeHtml(timer.quest_name)}</span>
-                            <span class="timer-status-compact ${isActive ? 'active' : 'inactive'}">${compactStatus}</span>
+                            <span class="timer-status-compact ${isActiveTimer ? 'active' : 'inactive'}">${compactStatus}</span>
                         </div>
                         <div class="timer-details">
                             <div class="timer-time-compact" id="timer-time-${timer.id}">${timeStr}</div>
@@ -547,24 +727,41 @@
                                 <div class="timer-progress-bar-compact" id="timer-progress-${timer.id}" style="width:${progressPercent}%;"></div>
                             </div>
                             <div class="timer-actions-compact">
-                                <button class="timer-btn-compact" onclick="event.stopPropagation(); editTimerHandler(${char.id}, ${timer.id})">✏️ РЕДАКТИРОВАТЬ</button>
-                                <button class="timer-btn-compact" onclick="event.stopPropagation(); deleteTimerHandler(${char.id}, ${timer.id})">🗑️ УДАЛИТЬ</button>
-                                <button class="timer-btn-compact" onclick="event.stopPropagation(); restartTimerHandler(${char.id}, ${timer.id})">🔄 РЕСТАРТ</button>
+                                ${questButtonHtml}
+                                <button class="timer-btn-compact" onclick="event.stopPropagation(); editTimerHandler(${char.id}, ${timer.id})">✏️Редактировать</button>
+                                <button class="timer-btn-compact" onclick="event.stopPropagation(); deleteTimerHandler(${char.id}, ${timer.id})">🗑️Удалить</button>
+                                <button class="timer-btn-compact" onclick="event.stopPropagation(); restartTimerHandler(${char.id}, ${timer.id})">🔄Рестарт</button>
                             </div>
                         </div>
                     </div>
                 `;
             }
-            if (timers.length === 0) timersHtml = '<div class="no-timers-compact">📭 Нет таймеров</div>';
-            html += `<div class="character-toggle-card" data-char-id="${char.id}"><div class="character-toggle-header" onclick="toggleCharacterTimers(${char.id})"><div class="character-toggle-avatar">${char.avatar || '👤'}</div><div class="character-toggle-info"><div class="character-toggle-name">${escapeHtml(char.name)}</div><div class="character-toggle-stats">⏰ Активных таймеров: <span id="char-active-count-${char.id}">${activeCount}</span> | 📋 Всего: ${timers.length}</div></div><div class="character-toggle-arrow">▼</div></div><div class="character-timers-container" id="char-timers-${char.id}"><div class="timer-list-compact" id="timer-list-${char.id}">${timersHtml}</div><button class="add-timer-btn-compact" onclick="event.stopPropagation(); openTimerModal(${char.id})">➕ ДОБАВИТЬ ТАЙМЕР</button><button class="refresh-all-btn" style="margin-top:10px; width:100%;" onclick="event.stopPropagation(); refreshAllTimers(${char.id})">🔄 ОБНОВИТЬ ВСЕ ТАЙМЕРЫ</button><div style="display:flex; gap:10px; margin-top:10px;"><button class="edit-char-btn" style="flex:1;" onclick="event.stopPropagation(); openEditCharModal(${char.id}, '${escapeHtml(char.name)}')">✏️ РЕДАКТИРОВАТЬ</button><button class="delete-char-btn" style="flex:1;" onclick="event.stopPropagation(); deleteCharacterHandler(${char.id})">🗑️ УДАЛИТЬ</button></div></div></div>`;
+            
+            if (timers.length === 0) timersHtml = '<div class="no-timers-compact">📭 Нет таймеров. Нажмите "Добавить таймер"</div>';
+            
+            contentHtml += `
+                <div class="char-content ${isActive ? 'active' : ''}" data-char-id="${char.id}">
+                    <div class="timer-list-compact">${timersHtml}</div>
+                    <button class="add-timer-btn-compact" onclick="openTimerModal(${char.id})">➕ ДОБАВИТЬ ТАЙМЕР</button>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="edit-char-btn" style="flex:1;" onclick="openEditCharModal(${char.id}, '${escapeHtml(char.name)}')">✏️ РЕДАКТИРОВАТЬ</button>
+                        <button class="delete-char-btn" style="flex:1;" onclick="deleteCharacterHandler(${char.id})">🗑️ УДАЛИТЬ</button>
+                    </div>
+                </div>
+            `;
         }
-        container.innerHTML = html;
+        
+        tabsHtml += '</div>';
+        container.innerHTML = tabsHtml + contentHtml;
         startTimerUpdates();
+        initDragAndDrop();
     }
+    
     function toggleTimerExpand(element) {
         if (event.target.classList.contains('timer-btn-compact')) return;
         element.classList.toggle('expanded');
     }
+    
     function startTimerUpdates() {
         if (timerUpdateInterval) clearInterval(timerUpdateInterval);
         timerUpdateInterval = setInterval(async () => {
@@ -574,41 +771,37 @@
                 let activeCount = 0;
                 for (const timer of timers) {
                     const remaining = timer.end_time - Date.now();
-                    const isActive = timer.is_active && remaining > 0;
+                    const isActiveTimer = timer.is_active && remaining > 0;
                     const timeStr = formatTime(remaining);
                     
-                    // Обновляем время в развёрнутом состоянии
                     const timeSpan = document.getElementById(`timer-time-${timer.id}`);
                     if (timeSpan) timeSpan.textContent = timeStr;
                     
-                    // Обновляем прогресс-бар
                     const progressBar = document.getElementById(`timer-progress-${timer.id}`);
                     if (progressBar) progressBar.style.width = `${calculateProgress(timer.end_time, timer.duration)}%`;
                     
-                    // Обновляем статус в свёрнутом состоянии
                     const statusSpan = document.querySelector(`.timer-item-compact[data-timer-id="${timer.id}"] .timer-status-compact`);
                     if (statusSpan) {
-                        if (isActive) {
+                        if (isActiveTimer) {
                             statusSpan.textContent = timeStr;
                             statusSpan.classList.add('active');
                             statusSpan.classList.remove('inactive');
                         } else {
-                            statusSpan.textContent = 'ДОСТУПЕН';
+                            statusSpan.textContent = '✅ ДОСТУПЕН';
                             statusSpan.classList.add('inactive');
                             statusSpan.classList.remove('active');
                         }
                     }
                     
-                    if (isActive) activeCount++;
+                    if (isActiveTimer) activeCount++;
                     
                     if (remaining <= 0 && timer.is_active && !timer.historyRecorded) {
                         timer.historyRecorded = true;
                         timer.is_active = false;
                         needsUpdate = true;
                         
-                        // Обновляем статус на "ДОСТУПЕН"
                         if (statusSpan) {
-                            statusSpan.textContent = 'ДОСТУПЕН';
+                            statusSpan.textContent = '✅ ДОСТУПЕН';
                             statusSpan.classList.remove('active');
                             statusSpan.classList.add('inactive');
                         }
@@ -621,7 +814,7 @@
                         await toggleTimerActive(timer.id, false);
                     }
                 }
-                const activeCountSpan = document.getElementById(`char-active-count-${char.id}`);
+                const activeCountSpan = document.querySelector(`.char-tab[data-char-id="${char.id}"] .active-count`);
                 if (activeCountSpan) activeCountSpan.textContent = activeCount;
             }
             if (needsUpdate) {
@@ -702,6 +895,7 @@
         if (confirm('Удалить персонажа и все его таймеры?')) {
             await deleteCharacter(id);
             delete timersCache[id];
+            if (currentActiveCharId === id) currentActiveCharId = null;
             await loadCharacters();
         }
     }
@@ -814,7 +1008,16 @@
             openTimerModal(characterId, timerId, timer.quest_name, Math.max(0, days), Math.max(0, hours), Math.max(0, minutes), timer.notes || '');
         }
     }
-    async function deleteTimerHandler(characterId, timerId) { if (confirm('Удалить таймер?')) { await deleteTimer(timerId); await refreshTimersForCharacter(characterId); } }
+    async function deleteTimerHandler(characterId, timerId) { 
+        if (confirm('Удалить таймер?')) { 
+            await deleteTimer(timerId); 
+            await refreshTimersForCharacter(characterId);
+            const modal = document.getElementById('favQuestSearchModal');
+            if (modal && modal.style.display === 'flex') {
+                renderFavQuestSearchList(document.getElementById('favQuestSearchInput').value);
+            }
+        } 
+    }
     async function restartTimerHandler(characterId, timerId) {
         const timers = timersCache[characterId] || [];
         const timer = timers.find(t => t.id === timerId);
@@ -829,7 +1032,7 @@
         }
     }
     async function refreshAllTimers(characterId) {
-        if (!confirm('🔄 Перезапустить ВСЕ квесты этого персонажа?')) return;
+        if (!confirm('🔄 Перезапустить ВСЕ таймеры этого персонажа?')) return;
         const timers = timersCache[characterId] || [];
         if (timers.length === 0) { alert('❌ Нет таймеров для перезапуска!'); return; }
         let refreshed = 0;
@@ -847,197 +1050,198 @@
         alert(`✅ Перезапущено ${refreshed} таймеров!`);
         await refreshTimersForCharacter(characterId);
     }
+    
     // ==================== МОДАЛКА КВЕСТА В ПРОФИЛЕ ====================
-let currentQuestForModal = null;
-let currentStagesProfile = [];
-let currentStageIndexProfile = 0;
+    let currentQuestForModal = null;
+    let currentStagesProfile = [];
+    let currentStageIndexProfile = 0;
 
-function getTypeIconsForModal(quest) {
-    let types = quest.types || [quest.type];
-    if (!Array.isArray(types)) types = [types];
-    const icons = [];
-    for (const t of types) {
-        switch(t) {
-            case 'story': icons.push('<span title="Сюжетный">📖</span>'); break;
-            case 'reward': icons.push('<span title="На плату">💰</span>'); break;
-            case 'item': icons.push('<span title="На предметы">🎁</span>'); break;
-            case 'daily': icons.push('<span title="Ежедневный">🌙</span>'); break;
-            case 'blago': icons.push('<span title="Благо">✨</span>'); break;
-            case 'glory': icons.push('<span title="Слава">🏆</span>'); break;
-            case 'useless': icons.push('<span title="Бесполезный">💀</span>'); break;
-            default: icons.push('<span>' + t + '</span>');
+    function getTypeIconsForModal(quest) {
+        let types = quest.types || [quest.type];
+        if (!Array.isArray(types)) types = [types];
+        const icons = [];
+        for (const t of types) {
+            switch(t) {
+                case 'story': icons.push('<span title="Сюжетный">📖</span>'); break;
+                case 'reward': icons.push('<span title="На плату">💰</span>'); break;
+                case 'item': icons.push('<span title="На предметы">🎁</span>'); break;
+                case 'daily': icons.push('<span title="Ежедневный">🌙</span>'); break;
+                case 'blago': icons.push('<span title="Благо">✨</span>'); break;
+                case 'glory': icons.push('<span title="Слава">🏆</span>'); break;
+                case 'useless': icons.push('<span title="Бесполезный">💀</span>'); break;
+                default: icons.push('<span>' + t + '</span>');
+            }
+        }
+        return icons.join(' ');
+    }
+
+    function openQuestModalProfile(questId) {
+        const quest = allQuests.find(q => q.id === questId);
+        if (!quest) return;
+        currentQuestForModal = quest;
+        currentStagesProfile = quest.stages || [];
+        
+        const stagesBtn = document.getElementById('openStagesProfileBtn');
+        if (stagesBtn) stagesBtn.style.display = currentStagesProfile.length > 0 ? 'inline-block' : 'none';
+        
+        document.getElementById('questModalProfileName').innerText = quest.name;
+        document.getElementById('questModalProfileLevel').innerHTML = '⭐ Уровень ' + quest.level;
+        document.getElementById('questModalProfileType').innerHTML = getTypeIconsForModal(quest);
+        document.getElementById('questModalProfileLocation').innerHTML = quest.location_name;
+        
+        const repeatText = quest.repeat_type === 'once' ? '🔒 Одноразовый' : (quest.repeat_type === 'repeat' ? '🔄 Повторяющийся' : '🌙 Ежедневный');
+        if (quest.cooldown) document.getElementById('questModalProfileRepeat').innerHTML = repeatText + ' | ⏱️ ' + quest.cooldown;
+        else document.getElementById('questModalProfileRepeat').innerHTML = repeatText;
+        
+        document.getElementById('questModalProfileDesc').innerHTML = escapeHtml(quest.description || '—');
+        document.getElementById('questModalProfileRequirements').innerHTML = escapeHtml(quest.requirements || '—');
+        
+        const commentBlock = document.getElementById('questModalProfileCommentBlock');
+        const commentText = document.getElementById('questModalProfileComment');
+        if (quest.comment) {
+            commentBlock.style.display = 'block';
+            commentText.innerHTML = escapeHtml(quest.comment);
+        } else {
+            commentBlock.style.display = 'none';
+        }
+        
+        let rewardsHtml = '<ul class="quest-modal-rewards-list-inline">';
+        if (quest.rewards.exp > 0) rewardsHtml += '<li>✨ Опыт: ' + quest.rewards.exp + '</li>';
+        if (quest.rewards.glory > 0) rewardsHtml += '<li>🏆 Слава: ' + quest.rewards.glory + '</li>';
+        if (quest.rewards.fee > 0) rewardsHtml += '<li>💰 Плата: ' + quest.rewards.fee + '</li>';
+        if (quest.rewards.gold > 0) rewardsHtml += '<li>🪙 Золото: ' + quest.rewards.gold + '</li>';
+        if (quest.rewards.silver > 0) rewardsHtml += '<li>🥈 Серебро: ' + quest.rewards.silver + '</li>';
+        if (quest.rewards.copper > 0) rewardsHtml += '<li>🟤 Медяк: ' + quest.rewards.copper + '</li>';
+        if (quest.rewards.items && quest.rewards.items.length > 0) {
+            for (const item of quest.rewards.items) {
+                rewardsHtml += '<li>📦 ' + escapeHtml(item.name) + ' (' + (item.level || 0) + ' ур.)</li>';
+            }
+        }
+        if (rewardsHtml === '<ul class="quest-modal-rewards-list-inline">') rewardsHtml += '<li>—</li>';
+        rewardsHtml += '</ul>';
+        document.getElementById('questModalProfileRewards').innerHTML = rewardsHtml;
+        
+        document.getElementById('questModalProfile').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeQuestModalProfile() {
+        document.getElementById('questModalProfile').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function openStagesModalProfile() {
+        if (!currentStagesProfile || currentStagesProfile.length === 0) return;
+        currentStageIndexProfile = 0;
+        updateStagesModalProfile();
+        document.getElementById('stagesModalProfile').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeStagesModalProfile() {
+        document.getElementById('stagesModalProfile').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function updateStagesModalProfile() {
+        const stage = currentStagesProfile[currentStageIndexProfile];
+        if (!stage) return;
+        const content = document.getElementById('stagesContentProfile');
+        const counter = document.getElementById('stagesCounterProfile');
+        if (content) {
+            let html = '';
+            if (stage.description) html += `<div style="margin-bottom:12px;"><strong>📖 Описание:</strong><br>${escapeHtml(stage.description)}</div>`;
+            if (stage.requirements) html += `<div style="margin-bottom:12px;"><strong>📋 Требования:</strong><br>${escapeHtml(stage.requirements)}</div>`;
+            if (stage.comment) html += `<div><strong>📝 Комментарий:</strong><br>${escapeHtml(stage.comment)}</div>`;
+            if (html === '') html = '<div>Нет информации об этапе</div>';
+            content.innerHTML = html;
+        }
+        if (counter) counter.innerHTML = `ЭТАП ${currentStageIndexProfile + 1} из ${currentStagesProfile.length}`;
+        
+        const dotsContainer = document.getElementById('stagesDotsProfile');
+        if (dotsContainer) {
+            let dotsHtml = '';
+            for (let i = 0; i < currentStagesProfile.length; i++) {
+                dotsHtml += `<div class="stage-dot ${i === currentStageIndexProfile ? 'active' : ''}" onclick="goToStageProfile(${i})"></div>`;
+            }
+            dotsContainer.innerHTML = dotsHtml;
         }
     }
-    return icons.join(' ');
-}
 
-function openQuestModalProfile(questId) {
-    const quest = allQuests.find(q => q.id === questId);
-    if (!quest) return;
-    currentQuestForModal = quest;
-    currentStagesProfile = quest.stages || [];
-    
-    const stagesBtn = document.getElementById('openStagesProfileBtn');
-    if (stagesBtn) stagesBtn.style.display = currentStagesProfile.length > 0 ? 'inline-block' : 'none';
-    
-    document.getElementById('questModalProfileName').innerText = quest.name;
-    document.getElementById('questModalProfileLevel').innerHTML = '⭐ Уровень ' + quest.level;
-    document.getElementById('questModalProfileType').innerHTML = getTypeIconsForModal(quest);
-    document.getElementById('questModalProfileLocation').innerHTML = quest.location_name;
-    
-    const repeatText = quest.repeat_type === 'once' ? '🔒 Одноразовый' : (quest.repeat_type === 'repeat' ? '🔄 Повторяющийся' : '🌙 Ежедневный');
-    if (quest.cooldown) document.getElementById('questModalProfileRepeat').innerHTML = repeatText + ' | ⏱️ ' + quest.cooldown;
-    else document.getElementById('questModalProfileRepeat').innerHTML = repeatText;
-    
-    document.getElementById('questModalProfileDesc').innerHTML = escapeHtml(quest.description || '—');
-    document.getElementById('questModalProfileRequirements').innerHTML = escapeHtml(quest.requirements || '—');
-    
-    const commentBlock = document.getElementById('questModalProfileCommentBlock');
-    const commentText = document.getElementById('questModalProfileComment');
-    if (quest.comment) {
-        commentBlock.style.display = 'block';
-        commentText.innerHTML = escapeHtml(quest.comment);
-    } else {
-        commentBlock.style.display = 'none';
-    }
-    
-    let rewardsHtml = '<ul class="quest-modal-rewards-list-inline">';
-    if (quest.rewards.exp > 0) rewardsHtml += '<li>✨ Опыт: ' + quest.rewards.exp + '</li>';
-    if (quest.rewards.glory > 0) rewardsHtml += '<li>🏆 Слава: ' + quest.rewards.glory + '</li>';
-    if (quest.rewards.fee > 0) rewardsHtml += '<li>💰 Плата: ' + quest.rewards.fee + '</li>';
-    if (quest.rewards.gold > 0) rewardsHtml += '<li>🪙 Золото: ' + quest.rewards.gold + '</li>';
-    if (quest.rewards.silver > 0) rewardsHtml += '<li>🥈 Серебро: ' + quest.rewards.silver + '</li>';
-    if (quest.rewards.copper > 0) rewardsHtml += '<li>🟤 Медяк: ' + quest.rewards.copper + '</li>';
-    if (quest.rewards.items && quest.rewards.items.length > 0) {
-        for (const item of quest.rewards.items) {
-            rewardsHtml += '<li>📦 ' + escapeHtml(item.name) + ' (' + (item.level || 0) + ' ур.)</li>';
+    function nextStageProfile() {
+        if (currentStageIndexProfile < currentStagesProfile.length - 1) {
+            currentStageIndexProfile++;
+            updateStagesModalProfile();
         }
     }
-    if (rewardsHtml === '<ul class="quest-modal-rewards-list-inline">') rewardsHtml += '<li>—</li>';
-    rewardsHtml += '</ul>';
-    document.getElementById('questModalProfileRewards').innerHTML = rewardsHtml;
-    
-    document.getElementById('questModalProfile').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
 
-function closeQuestModalProfile() {
-    document.getElementById('questModalProfile').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-function openStagesModalProfile() {
-    if (!currentStagesProfile || currentStagesProfile.length === 0) return;
-    currentStageIndexProfile = 0;
-    updateStagesModalProfile();
-    document.getElementById('stagesModalProfile').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeStagesModalProfile() {
-    document.getElementById('stagesModalProfile').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-function updateStagesModalProfile() {
-    const stage = currentStagesProfile[currentStageIndexProfile];
-    if (!stage) return;
-    const content = document.getElementById('stagesContentProfile');
-    const counter = document.getElementById('stagesCounterProfile');
-    if (content) {
-        let html = '';
-        if (stage.description) html += `<div style="margin-bottom:12px;"><strong>📖 Описание:</strong><br>${escapeHtml(stage.description)}</div>`;
-        if (stage.requirements) html += `<div style="margin-bottom:12px;"><strong>📋 Требования:</strong><br>${escapeHtml(stage.requirements)}</div>`;
-        if (stage.comment) html += `<div><strong>📝 Комментарий:</strong><br>${escapeHtml(stage.comment)}</div>`;
-        if (html === '') html = '<div>Нет информации об этапе</div>';
-        content.innerHTML = html;
-    }
-    if (counter) counter.innerHTML = `ЭТАП ${currentStageIndexProfile + 1} из ${currentStagesProfile.length}`;
-    
-    const dotsContainer = document.getElementById('stagesDotsProfile');
-    if (dotsContainer) {
-        let dotsHtml = '';
-        for (let i = 0; i < currentStagesProfile.length; i++) {
-            dotsHtml += `<div class="stage-dot ${i === currentStageIndexProfile ? 'active' : ''}" onclick="goToStageProfile(${i})"></div>`;
+    function prevStageProfile() {
+        if (currentStageIndexProfile > 0) {
+            currentStageIndexProfile--;
+            updateStagesModalProfile();
         }
-        dotsContainer.innerHTML = dotsHtml;
     }
-}
 
-function nextStageProfile() {
-    if (currentStageIndexProfile < currentStagesProfile.length - 1) {
-        currentStageIndexProfile++;
+    function goToStageProfile(index) {
+        currentStageIndexProfile = index;
         updateStagesModalProfile();
     }
-}
 
-function prevStageProfile() {
-    if (currentStageIndexProfile > 0) {
-        currentStageIndexProfile--;
-        updateStagesModalProfile();
+    async function addTimerFromQuestProfile() {
+        if (!currentQuestForModal) return;
+        closeQuestModalProfile();
+        setTimeout(() => openTimerFromQuest(currentQuestForModal), 300);
     }
-}
 
-function goToStageProfile(index) {
-    currentStageIndexProfile = index;
-    updateStagesModalProfile();
-}
-
-async function addTimerFromQuestProfile() {
-    if (!currentQuestForModal) return;
-    closeQuestModalProfile();
-    setTimeout(() => openTimerFromQuest(currentQuestForModal), 300);
-}
-
-async function openTimerFromQuest(quest) {
-    const characters = await getUserCharacters(currentUser.login);
-    if (characters.length === 0) {
-        alert('❌ Сначала создайте персонажа!');
-        return;
+    async function openTimerFromQuest(quest) {
+        const charactersList = await getUserCharacters(currentUser.login);
+        if (charactersList.length === 0) {
+            alert('❌ Сначала создайте персонажа!');
+            return;
+        }
+        
+        const charNames = charactersList.map(c => ({ id: c.id, name: c.name }));
+        const charList = charNames.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+        const charIndex = prompt(`Выберите персонажа:\n${charList}\n\nВведите номер:`);
+        if (!charIndex) return;
+        const selectedChar = charNames[parseInt(charIndex) - 1];
+        if (!selectedChar) { alert('❌ Неверный выбор!'); return; }
+        
+        const cooldownMin = quest.cooldown_minutes || 60;
+        const hours = Math.floor(cooldownMin / 60);
+        const minutes = cooldownMin % 60;
+        const days = Math.floor(hours / 24);
+        const remainingHours = hours % 24;
+        
+        const msg = `Время на квест: ${days > 0 ? days + 'д ' : ''}${remainingHours > 0 ? remainingHours + 'ч ' : ''}${minutes > 0 ? minutes + 'м' : ''}`;
+        const useDefault = confirm(`${msg}\n\nИспользовать это время?\nOK - да, Отмена - ввести своё`);
+        
+        let totalMs;
+        if (useDefault) {
+            totalMs = (days * 86400000) + (remainingHours * 3600000) + (minutes * 60000);
+        } else {
+            const customHours = parseInt(prompt('Введите часы:', '1')) || 0;
+            const customMinutes = parseInt(prompt('Введите минуты:', '0')) || 0;
+            totalMs = (customHours * 3600000) + (customMinutes * 60000);
+        }
+        
+        if (totalMs <= 0) { alert('❌ Время должно быть больше 0!'); return; }
+        
+        const endTime = Date.now() + totalMs;
+        const { error } = await db.from('user_timers').insert([{ 
+            character_id: selectedChar.id,
+            quest_name: quest.name,
+            end_time: endTime,
+            duration: totalMs,
+            notes: quest.comment || '',
+            is_active: true
+        }]);
+        
+        if (error) { alert('❌ Ошибка при добавлении в таймер!'); return; }
+        alert('✅ Квест добавлен в таймер!');
+        await loadCharacters();
     }
     
-    // Создаём простой диалог выбора персонажа и времени
-    const charNames = characters.map(c => ({ id: c.id, name: c.name }));
-    const charList = charNames.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-    const charIndex = prompt(`Выберите персонажа:\n${charList}\n\nВведите номер:`);
-    if (!charIndex) return;
-    const selectedChar = charNames[parseInt(charIndex) - 1];
-    if (!selectedChar) { alert('❌ Неверный выбор!'); return; }
-    
-    const cooldownMin = quest.cooldown_minutes || 60;
-    const hours = Math.floor(cooldownMin / 60);
-    const minutes = cooldownMin % 60;
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    
-    const msg = `Время на квест: ${days > 0 ? days + 'д ' : ''}${remainingHours > 0 ? remainingHours + 'ч ' : ''}${minutes > 0 ? minutes + 'м' : ''}`;
-    const useDefault = confirm(`${msg}\n\nИспользовать это время?\nOK - да, Отмена - ввести своё`);
-    
-    let totalMs;
-    if (useDefault) {
-        totalMs = (days * 86400000) + (remainingHours * 3600000) + (minutes * 60000);
-    } else {
-        const customHours = parseInt(prompt('Введите часы:', '1')) || 0;
-        const customMinutes = parseInt(prompt('Введите минуты:', '0')) || 0;
-        totalMs = (customHours * 3600000) + (customMinutes * 60000);
-    }
-    
-    if (totalMs <= 0) { alert('❌ Время должно быть больше 0!'); return; }
-    
-    const endTime = Date.now() + totalMs;
-    const { error } = await db.from('user_timers').insert([{ 
-        character_id: selectedChar.id,
-        quest_name: quest.name,
-        end_time: endTime,
-        duration: totalMs,
-        notes: quest.comment || '',
-        is_active: true
-    }]);
-    
-    if (error) { alert('❌ Ошибка при добавлении в таймер!'); return; }
-    alert('✅ Квест добавлен в таймер!');
-    await loadCharacters();
-}
     // ==================== СОБЫТИЯ ====================
     document.getElementById('historyBtn')?.addEventListener('click', openHistoryModal);
     document.getElementById('historyCharacterFilter')?.addEventListener('change', filterHistory);
