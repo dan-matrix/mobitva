@@ -22,7 +22,7 @@
                     <div class="admin-badge">ADMIN</div>
                 </div>
                 <div class="admin-actions">
-                    <button class="admin-btn" onclick="location.href='profile.html'">👤 Профиль</button>
+                    <button class="admin-btn" onclick="location.href='/profile'">👤 Профиль</button>
                     <button class="admin-btn" onclick="openAdminPanel()">⚙️ Управление</button>
                     <button class="admin-btn logout-btn" onclick="logout()">🚪 Выйти</button>
                 </div>
@@ -100,7 +100,7 @@
     <script src="/js/common.js"></script>
     <script>
         if (!checkAuth()) { 
-            window.location.href = 'auth.html'; 
+            window.location.href = '/auth';
         } 
         
         document.addEventListener('DOMContentLoaded', function() {
